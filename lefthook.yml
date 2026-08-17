@@ -1,0 +1,13 @@
+# Optional quality gates (activate with `lefthook install`; needs biome + gitleaks).
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: "*.{ts,tsx,js,jsx,json,css}"
+      run: pnpm exec biome check --no-errors-on-unmatched {staged_files}
+    gitleaks:
+      run: gitleaks protect --staged --no-banner
+pre-push:
+  commands:
+    gitleaks:
+      run: gitleaks detect --no-banner

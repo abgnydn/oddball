@@ -1,0 +1,444 @@
+/* ==========================================================================
+   Odd Ball — the whole stylesheet. Low-vision first: big text, thick
+   borders, loud highlight ring, one strong accent per theme.
+
+   CLASS MAP (what the game code consumes)
+   .header         top bar: game title + current screen name
+   .header-title   game title inside .header
+   .header-screen  current screen name inside .header
+   .main           middle area; canvas parent (position:relative, flex:1)
+   .canvas-wrap canvas  the course view; absolutely fills its wrapper
+   .caption-bar    VERY large always-visible caption mirroring speech
+   .footer         bottom bar: mode, focused item, legend
+   .footer-mode    current mode text inside .footer
+   .footer-focus   currently highlighted item's name inside .footer
+   .footer-legend  "Space = next · Return = select · Hold Return = menu"
+   .scan-list      vertical scannable list container
+   .scan-item      one big scannable row/button (min-height 64px)
+   .overlay        context-menu backdrop: fixed, dimmed, centers its child
+   .overlay-panel  centered panel inside .overlay (put a .scan-list in it)
+
+   Expected DOM: .header, .main, .caption-bar, .footer as flex children of
+   <body> (or of any 100dvh flex-column container).
+
+   DATA-ATTRIBUTE CONTRACT (all on <html> unless noted)
+   data-theme = 'high-contrast' | 'light' | 'dark' | 'warm'
+                (missing attribute = high-contrast; tokens live on :root)
+   data-hl = 'thin' | 'medium' | 'thick'  → highlight ring 4 / 8 / 12 px
+   data-reduce-motion = 'true'            → kills all animation/transition
+   --font-scale (inline style on <html>)  → 1 / 1.25 / 1.5 / 1.75 / 2
+                                            (default 1.25; scales ALL rem UI)
+   [data-scan-focus='true'] (on a .scan-item) → highlight ring + pulse
+   --dwell (inline style on a .scan-item)  → 0..1, set per frame by the
+                                             scanner: left-to-right dwell fill
+
+   CANVAS TOKENS (read by src/render/draw.ts via getComputedStyle on <html>)
+   --sky --ground --water --sand --green --rough --flag --ball
+   --ball-outline --trail --wave --accent
+   decor tokens (beauty pass): --decor 0|1 (0 = stark: flat --sky, no
+   gradient/parallax/texture — high-contrast keeps 0), --sky-top --sky-bottom
+   (vertical sky gradient), --sky-dawn --sky-dusk (time-of-day tints mixed
+   over the gradient, hole 1 → hole 6), --silhouette-1/2/3 (muted parallax
+   bands, far → near), --stripe (fairway mowing-stripe overlay color)
+   ========================================================================== */
+
+/* ---------- tokens: high-contrast (default) ---------- */
+
+:root {
+	/* ui */
+	--bg: #000000;
+	--text: #ffffff;
+	--muted: #c9c9c9;
+	--panel: #101010;
+	--border: #ffffff;
+	--accent: #ffd60a;
+	--accent-text: #000000;
+	--focus-ring: #ffd60a;
+	--caption-bg: #000000;
+	--caption-text: #ffffff;
+	--dim: rgba(0, 0, 0, 0.8);
+	/* canvas */
+	--sky: #000000;
+	--ground: #ffffff;
+	--water: #2f9dff;
+	--sand: #e3c56f;
+	--green: #00e676;
+	--rough: #a8a8a8;
+	--flag: #ff2d55;
+	--ball: #ffd60a;
+	--ball-outline: #000000;
+	--trail: #ffffff;
+	--wave: #ffffff;
+	/* decor: OFF — high-contrast is stark by design; flat --sky, no gradients,
+	   no parallax, no texture. The values below are inert placeholders. */
+	--decor: 0;
+	--sky-top: #000000;
+	--sky-bottom: #000000;
+	--sky-dawn: #000000;
+	--sky-dusk: #000000;
+	--silhouette-1: #000000;
+	--silhouette-2: #000000;
+	--silhouette-3: #000000;
+	--stripe: #000000;
+	/* highlight ring width (medium default; see data-hl below) */
+	--hl-w: 8px;
+}
+
+html[data-theme='light'] {
+	--bg: #f7f7f5;
+	--text: #17181a;
+	--muted: #4d4f52;
+	--panel: #ffffff;
+	--border: #17181a;
+	--accent: #0a5bd3;
+	--accent-text: #ffffff;
+	--focus-ring: #0a5bd3;
+	--caption-bg: #17181a;
+	--caption-text: #ffffff;
+	--dim: rgba(20, 22, 26, 0.55);
+	--sky: #bfe3ff;
+	--ground: #8cc152;
+	--water: #2f8fdd;
+	--sand: #f0ddab;
+	--green: #33cf6b;
+	--rough: #5f8f38;
+	--flag: #d63031;
+	--ball: #ff7a00;
+	--ball-outline: #17181a;
+	--trail: #17181a;
+	--wave: #f2fbff;
+	--decor: 1;
+	--sky-top: #9fd0f2;
+	--sky-bottom: #e6f4ff;
+	--sky-dawn: #ffcf9e;
+	--sky-dusk: #ff9d6e;
+	--silhouette-1: #b3d4ea;
+	--silhouette-2: #8fb8a8; /* green-gray: blue trees read as water next to real water */
+	--silhouette-3: #84a98c;
+	--stripe: #4f7d2f;
+}
+
+html[data-theme='dark'] {
+	--bg: #101319;
+	--text: #e9edf3;
+	--muted: #a6adba;
+	--panel: #1a1f29;
+	--border: #8b93a7;
+	--accent: #5cb3ff;
+	--accent-text: #0b0d12;
+	--focus-ring: #5cb3ff;
+	--caption-bg: #000000;
+	--caption-text: #ffffff;
+	--dim: rgba(0, 0, 0, 0.7);
+	--sky: #182136;
+	--ground: #3f5a41;
+	--water: #2e6fc2;
+	--sand: #b3a06b;
+	--green: #4fae63;
+	--rough: #2c4030;
+	--flag: #ff6b6b;
+	--ball: #ffd166;
+	--ball-outline: #0b0d12;
+	--trail: #cfe3ff;
+	--wave: #cfe3ff;
+	--decor: 1;
+	--sky-top: #0b1120;
+	--sky-bottom: #223252;
+	--sky-dawn: #55486f;
+	--sky-dusk: #7c4634;
+	--silhouette-1: #1d2940;
+	--silhouette-2: #263650;
+	--silhouette-3: #2f4661;
+	--stripe: #263a28;
+}
+
+html[data-theme='warm'] {
+	--bg: #fff3e2;
+	--text: #46281a;
+	--muted: #7a5a44;
+	--panel: #ffe7c7;
+	--border: #46281a;
+	--accent: #ee5f2a;
+	--accent-text: #ffffff;
+	--focus-ring: #ee5f2a;
+	--caption-bg: #46281a;
+	--caption-text: #fff3e2;
+	--dim: rgba(70, 40, 26, 0.55);
+	--sky: #ffd9a8;
+	--ground: #97c05c;
+	--water: #58b7d8;
+	--sand: #f3d9a4;
+	--green: #58c46f;
+	--rough: #6f984a;
+	--flag: #ee5f2a;
+	--ball: #ff8b2c;
+	--ball-outline: #46281a;
+	--trail: #46281a;
+	--wave: #fff7ea;
+	--decor: 1;
+	--sky-top: #ffcf97;
+	--sky-bottom: #fff0d4;
+	--sky-dawn: #ffc48b;
+	--sky-dusk: #f58e57;
+	--silhouette-1: #f0cba1;
+	--silhouette-2: #dbb185;
+	--silhouette-3: #c19a67;
+	--stripe: #6f9c3f;
+}
+
+/* ---------- highlight ring thickness ---------- */
+
+html[data-hl='thin'] {
+	--hl-w: 4px;
+}
+html[data-hl='medium'] {
+	--hl-w: 8px;
+}
+html[data-hl='thick'] {
+	--hl-w: 12px;
+}
+
+/* ---------- base & font scale ---------- */
+
+* {
+	box-sizing: border-box;
+}
+
+/* keep the html `hidden` attribute working on styled elements (.overlay etc.) */
+[hidden] {
+	display: none !important;
+}
+
+html {
+	/* every rem in the UI scales with this one line */
+	font-size: calc(16px * var(--font-scale, 1.25));
+}
+
+body {
+	margin: 0;
+	height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--bg);
+	color: var(--text);
+	font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+	line-height: 1.4;
+}
+
+:focus-visible {
+	outline: 3px solid var(--focus-ring);
+	outline-offset: 2px;
+}
+
+/* ---------- header ---------- */
+
+.header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.6rem 1rem;
+	background: var(--panel);
+	border-bottom: 3px solid var(--border);
+}
+
+.header-title {
+	font-size: 1.3rem;
+	font-weight: 800;
+}
+
+.header-screen {
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: var(--muted);
+}
+
+/* ---------- main / canvas ---------- */
+
+.main {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+	background: var(--sky);
+}
+
+.canvas-wrap canvas {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	display: block;
+}
+
+/* ---------- caption bar (mirrors all speech; always visible) ---------- */
+
+.caption-bar {
+	/* above the pause scrim (z 100): the speech mirror must never be dimmed */
+	position: relative;
+	z-index: 101;
+	display: flex;
+	/* 'safe center': centers short lines, top-aligns once content overflows */
+	align-items: safe center;
+	min-height: 4.6rem;
+	/* long chained announcements GROW the bar (the canvas yields) up to 45% of
+	   the screen, then scroll — never clip: switch users cannot scroll */
+	flex: none;
+	max-height: 45dvh;
+	overflow-y: auto;
+	padding: 0.6rem 1rem;
+	background: var(--caption-bg);
+	color: var(--caption-text);
+	border-top: 3px solid var(--border);
+	font-size: 1.6rem;
+	font-weight: 700;
+}
+
+/* ---------- footer (mode · focused item · legend) ---------- */
+
+.footer {
+	/* above the pause scrim: the focused-item name stays readable */
+	position: relative;
+	z-index: 101;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 1.5rem;
+	padding: 0.5rem 1rem;
+	background: var(--panel);
+	border-top: 3px solid var(--border);
+	font-size: 1rem;
+	font-weight: 600;
+}
+
+.footer-mode {
+	color: var(--accent);
+}
+
+.footer-focus {
+	color: var(--text);
+}
+
+.footer-legend {
+	margin-left: auto;
+	color: var(--muted);
+}
+
+/* ---------- scan list ---------- */
+
+.scan-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.8rem;
+	margin: 0;
+	padding: 1rem;
+	list-style: none;
+}
+
+.scan-item {
+	/* works as <button> or <div>: reset, then style */
+	appearance: none;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	min-height: 64px;
+	padding: 0.9rem 1.2rem;
+	background: var(--panel);
+	color: var(--text);
+	border: 3px solid var(--border);
+	border-radius: 10px;
+	font-size: 1.35rem;
+	font-weight: 700;
+}
+
+.scan-item:hover {
+	border-color: var(--accent);
+	background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}
+
+.scan-item:active {
+	background: color-mix(in srgb, var(--accent) 28%, var(--panel));
+	transform: translateY(1px);
+}
+
+/* the highlight ring: the single most important visual in the game */
+[data-scan-focus='true'] {
+	outline: var(--hl-w) solid var(--focus-ring);
+	outline-offset: 4px;
+	background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+	animation: hl-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hl-pulse {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--focus-ring) 50%, transparent);
+	}
+	50% {
+		box-shadow: 0 0 0 calc(var(--hl-w) + 6px)
+			color-mix(in srgb, var(--focus-ring) 50%, transparent);
+	}
+}
+
+/* ---------- dwell-to-select fill ---------- */
+
+/* The scanner drives --dwell (0..1) inline via rAF while the pointer rests on
+   an item; at 1 the item selects. The fill is a background-image layer over
+   the item's background-color, hard-edged, in a muted accent tone that reads
+   on all four themes. The state rules above set the `background` shorthand
+   (which resets background-image), so this rule lists every state and sits
+   AFTER all of them. No transition/animation here — the fill is stepped by
+   inline style each frame, so it keeps moving under reduce-motion (it IS the
+   dwell affordance); the pulse stays a separate, reduce-motion-killed extra. */
+
+.scan-item {
+	--dwell: 0;
+}
+
+.scan-item,
+.scan-item:hover,
+.scan-item:active,
+.scan-item[data-scan-focus='true'] {
+	background-image: linear-gradient(
+		to right,
+		color-mix(in srgb, var(--accent) 30%, transparent) calc(var(--dwell, 0) * 100%),
+		transparent calc(var(--dwell, 0) * 100%)
+	);
+}
+
+/* ---------- context-menu overlay ---------- */
+
+.overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	background: var(--dim);
+}
+
+.overlay-panel {
+	width: min(32rem, 100%);
+	max-height: 85dvh;
+	overflow-y: auto;
+	background: var(--panel);
+	border: 4px solid var(--border);
+	border-radius: 14px;
+	padding: 0.5rem;
+}
+
+/* ---------- reduce motion ---------- */
+
+html[data-reduce-motion='true'] * {
+	animation: none !important;
+	transition: none !important;
+}
+
+html[data-reduce-motion='true'] [data-scan-focus='true'] {
+	box-shadow: none;
+}
