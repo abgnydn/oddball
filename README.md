@@ -39,9 +39,10 @@ is written for; that review happens before any submission to their library.
   **Make a Hole** editor (pick length, hills, water, sand, wind — par comes
   from simulating your hole, and you can save ten of them).
 
-There is no hosted build yet — run it locally with the commands below. Speech
-uses the browser's built-in voices (best in Chrome, Edge, or Safari; some
-Linux/Firefox setups have no voices installed).
+**Play it at [oddball.pages.dev](https://oddball.pages.dev)** — or run it
+locally with the commands below. Speech uses the browser's built-in voices
+(best in Chrome, Edge, or Safari; some Linux/Firefox setups have no voices
+installed).
 
 ## Development
 

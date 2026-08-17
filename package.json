@@ -14,7 +14,8 @@
     "calibrate": "esbuild tools/calibrate.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/calibrate.mjs && node node_modules/.cache/calibrate.mjs",
     "holes": "esbuild tools/holes.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/holes.mjs && node node_modules/.cache/holes.mjs",
     "editor-check": "esbuild tools/editor-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/editor-check.mjs && node node_modules/.cache/editor-check.mjs",
-    "input-check": "esbuild tools/input-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/input-check.mjs && node node_modules/.cache/input-check.mjs"
+    "input-check": "esbuild tools/input-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/input-check.mjs && node node_modules/.cache/input-check.mjs",
+    "deploy": "wrangler pages deploy dist --project-name oddball"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
