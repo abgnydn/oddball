@@ -12,6 +12,7 @@ import {
 	DWELL_MS,
 	EDITOR_OPTIONS,
 	MAX_STROKES,
+	nextScanMs,
 	RANGE,
 	SHAPE_ORDER,
 	SHAPES,
@@ -131,6 +132,7 @@ export function createFlow(deps: Deps): Flow {
 		sfx.setEnabled(settings.audioCues)
 		scanner.setScanMs(settings.scanMs)
 		scanner.setDwell(settings.dwell === 'off' ? null : DWELL_MS[settings.dwell])
+		scanner.setAutoScan(settings.autoScan)
 		renderer.setTheme(settings.theme)
 	}
 
@@ -205,7 +207,10 @@ export function createFlow(deps: Deps): Flow {
 			return
 		}
 		sfx.play('focus', { index }) // pitch walks up the scale with the list
-		tts.speak(item.speak)
+		// Ordinary labels must not gate the scan, or speech length would replace
+		// the player's chosen speed. Warnings are the exception: an armed
+		// "this will throw your round away" must be heard in full.
+		tts.speak(item.speak, { hold: item.hold === true })
 	})
 
 	scanner.onSelect((item, index) => {
@@ -264,7 +269,7 @@ export function createFlow(deps: Deps): Flow {
 		const specs: HudItemSpec[] = L.HELP_PAGES.map((p, i) => ({
 			id: `page-${i}`,
 			label: p.label,
-			speak: `${p.label}. Press Return to hear it.`,
+			speak: `${p.label}. Press Enter to hear it.`,
 		}))
 		specs.push({ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak })
 		show(
@@ -327,11 +332,21 @@ export function createFlow(deps: Deps): Flow {
 			{
 				id: 'scan',
 				label: L.SETTINGS_LABELS.scan,
-				value: () =>
-					settings.scanMs >= 1600 ? 'slow' : settings.scanMs <= 800 ? 'fast' : 'normal',
+				value: () => {
+					const s = settings.scanMs / 1000
+					const n = Number.isInteger(s) ? String(s) : s.toFixed(1)
+					return `${n} ${settings.scanMs === 1000 ? 'second' : 'seconds'}`
+				},
 				cycle: () => {
-					const next = settings.scanMs >= 1600 ? 1200 : settings.scanMs <= 800 ? 1600 : 800
-					settings = { ...settings, scanMs: next }
+					settings = { ...settings, scanMs: nextScanMs(settings.scanMs) }
+				},
+			},
+			{
+				id: 'auto',
+				label: L.SETTINGS_LABELS.auto,
+				value: () => (settings.autoScan ? 'on — one switch' : 'off — two switches'),
+				cycle: () => {
+					settings = { ...settings, autoScan: !settings.autoScan }
 				},
 			},
 			{
@@ -410,7 +425,7 @@ export function createFlow(deps: Deps): Flow {
 			return {
 				id: r.id,
 				label: `${r.label}: ${r.value()}`,
-				speak: `${spoken} Press Return to change it.`,
+				speak: `${spoken} Press Enter to change it.`,
 			}
 		})
 		specs.push({ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak })
@@ -470,7 +485,7 @@ export function createFlow(deps: Deps): Flow {
 		const specs: HudItemSpec[] = customHoles.map((h, i) => ({
 			id: `hole-${i}`,
 			label: h.name,
-			speak: `${h.name}. Press Return for choices.`,
+			speak: `${h.name}. Press Enter for choices.`,
 		}))
 		specs.push({ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak })
 		show(
@@ -487,7 +502,9 @@ export function createFlow(deps: Deps): Flow {
 		)
 	}
 
-	const holeMenu = (players: 1 | 2, holeIdx: number, startIndex = 0): void => {
+	// armDelete: a hole someone built by hand is the only player-made thing in
+	// the game, and it was going away on one select. Two-step, like New round.
+	const holeMenu = (players: 1 | 2, holeIdx: number, startIndex = 0, armDelete = false): void => {
 		const custom = customHoles[holeIdx]
 		if (!custom) {
 			myHoles(players)
@@ -497,16 +514,27 @@ export function createFlow(deps: Deps): Flow {
 		hud.setMode('Menu')
 		const specs: HudItemSpec[] = [
 			{ id: 'play', label: L.MENU.playThis, speak: L.MENU.playThisSpeak },
-			{ id: 'delete', label: L.MENU.deleteThis, speak: L.MENU.deleteThisSpeak },
+			armDelete
+				? {
+						id: 'delete',
+						label: L.MENU.deleteArmed,
+						speak: L.MENU.deleteArmedSpeak,
+						hold: true,
+					}
+				: { id: 'delete', label: L.MENU.deleteThis, speak: L.MENU.deleteThisSpeak },
 			{ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak },
 		]
 		show(
 			'holemenu',
 			specs,
-			(id) => {
+			(id, index) => {
 				if (id === 'play') {
 					playCustom(players, custom)
 				} else if (id === 'delete') {
+					if (!armDelete) {
+						holeMenu(players, holeIdx, index, true)
+						return
+					}
 					customHoles.splice(holeIdx, 1)
 					persist()
 					tts.speak(L.holeDeleted(custom.name))
@@ -515,7 +543,7 @@ export function createFlow(deps: Deps): Flow {
 					myHoles(players, holeIdx)
 				}
 			},
-			{ startIndex, rebuild: (i) => holeMenu(players, holeIdx, i) },
+			{ startIndex, rebuild: (i) => holeMenu(players, holeIdx, i, armDelete) },
 		)
 	}
 
@@ -544,7 +572,7 @@ export function createFlow(deps: Deps): Flow {
 		const specs: HudItemSpec[] = keys.map((k) => ({
 			id: `opt-${k}`,
 			label: `${L.EDITOR_ROW_LABELS[k]}: ${optionLabel(k)}`,
-			speak: `${L.EDITOR_ROW_LABELS[k]}: ${optionLabel(k)}. Press Return to change it.`,
+			speak: `${L.EDITOR_ROW_LABELS[k]}: ${optionLabel(k)}. Press Enter to change it.`,
 		}))
 		specs.push(
 			{ id: 'hear', label: L.MENU.hearHole, speak: L.MENU.hearHoleSpeak },
@@ -735,6 +763,12 @@ export function createFlow(deps: Deps): Flow {
 				speak: L.shapeFocus(id, reach(id)),
 				glyph: id,
 			})),
+			// A scannable route to the menu. Holding Enter also opens it, but a
+			// player who cannot sustain a 3 s hold would otherwise have no way to
+			// reach settings or leave a round — §12 calls that a locked door.
+			// §12 also notes the cost: this row is another stop on every pass,
+			// which is why it sits last.
+			{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeak },
 		]
 		show(
 			'rack',
@@ -743,6 +777,10 @@ export function createFlow(deps: Deps): Flow {
 				if (!round) return
 				if (id === 'where') {
 					tts.speak(L.whereAmI(hole, round.holeIdx, round.ball, curStrokes()))
+					return
+				}
+				if (id === 'menu') {
+					openMenu()
 					return
 				}
 				strike(id as ShapeId, index)
@@ -1022,13 +1060,48 @@ export function createFlow(deps: Deps): Flow {
 		if (!inFlight) {
 			underlayRestore = () => prevRebuild(Math.max(prevIndex, 0))
 		}
-		const specs: HudItemSpec[] = [{ id: 'resume', label: L.MENU.resume, speak: L.MENU.resumeSpeak }]
-		if (round) specs.push({ id: 'where', label: L.MENU.whereAmI, speak: L.MENU.whereAmISpeak })
-		if (!inFlight)
-			specs.push({ id: 'settings', label: L.MENU.settings, speak: L.MENU.settingsSpeak })
-		if (round) specs.push({ id: 'new', label: L.MENU.newRound, speak: L.MENU.newRoundSpeak })
-		if (!wasTitle) specs.push({ id: 'exit', label: L.MENU.exit, speak: L.MENU.exitSpeak })
-		overlaySelect = (id) => {
+		// New round and Exit throw away a round in progress. Both arm on the first
+		// pick and only act on a second — a mis-timed select, which is the normal
+		// failure mode of scanning, must never cost the player their game.
+		let armed: 'new' | 'exit' | null = null
+		const menuSpecs = (): HudItemSpec[] => {
+			const specs: HudItemSpec[] = [
+				{ id: 'resume', label: L.MENU.resume, speak: L.MENU.resumeSpeak },
+			]
+			if (round) specs.push({ id: 'where', label: L.MENU.whereAmI, speak: L.MENU.whereAmISpeak })
+			if (!inFlight)
+				specs.push({ id: 'settings', label: L.MENU.settings, speak: L.MENU.settingsSpeak })
+			if (round)
+				specs.push(
+					armed === 'new'
+						? {
+								id: 'new',
+								label: L.MENU.newRoundArmed,
+								speak: L.MENU.newRoundArmedSpeak,
+								hold: true,
+							}
+						: { id: 'new', label: L.MENU.newRound, speak: L.MENU.newRoundSpeak },
+				)
+			if (!wasTitle)
+				specs.push(
+					armed === 'exit'
+						? { id: 'exit', label: L.MENU.exitArmed, speak: L.MENU.exitArmedSpeak, hold: true }
+						: { id: 'exit', label: L.MENU.exit, speak: L.MENU.exitSpeak },
+				)
+			return specs
+		}
+		const showMenu = (startIndex: number): void => {
+			const items = hud.overlay(menuSpecs())
+			scanner.setItems(items, { startIndex })
+		}
+		overlaySelect = (id, index) => {
+			if (id === 'new' || id === 'exit') {
+				if (armed !== id) {
+					armed = id
+					showMenu(index) // re-render armed; the focus handler speaks the warning
+					return
+				}
+			} else armed = null
 			if (id === 'resume') {
 				closeMenu()
 				return
@@ -1047,6 +1120,10 @@ export function createFlow(deps: Deps): Flow {
 			}
 			if (id === 'new' && round) {
 				flightToken++ // orphan any in-flight animation
+				if (flightPaused) {
+					flightPaused = false
+					renderer.resume() // else every later idle scene stays frozen
+				}
 				sfx.tone(null)
 				hud.hideOverlay()
 				underlayRestore = null
@@ -1055,14 +1132,17 @@ export function createFlow(deps: Deps): Flow {
 			}
 			if (id === 'exit') {
 				flightToken++
+				if (flightPaused) {
+					flightPaused = false
+					renderer.resume()
+				}
 				sfx.tone(null)
 				hud.hideOverlay()
 				underlayRestore = null
 				title()
 			}
 		}
-		const items = hud.overlay(specs)
-		scanner.setItems(items, { startIndex: 0 })
+		showMenu(0)
 	}
 
 	// ---------- public ----------
@@ -1073,6 +1153,9 @@ export function createFlow(deps: Deps): Flow {
 			title(0, true)
 		},
 		onSwitch(e) {
+			// Speak the mode change: an eyes-closed player needs to know the
+			// direction flipped (Benny's Mini Golf announces this too).
+			if (e === 'autostart') tts.speak(L.BACKWARD_SCAN)
 			if (e === 'menu') {
 				if (hud.overlayOpen()) closeMenu()
 				else openMenu()

@@ -12,19 +12,23 @@
    .footer         bottom bar: mode, focused item, legend
    .footer-mode    current mode text inside .footer
    .footer-focus   currently highlighted item's name inside .footer
-   .footer-legend  "Space = next · Return = select · Hold Return = menu"
+   .footer-legend  "Space = next · Hold Space = back · Enter = pick · Hold Enter = menu"
+   .footer-pause   on-screen Pause button (pointer/touch parity with Hold Enter)
    .scan-list      vertical scannable list container
    .scan-item      one big scannable row/button (min-height 64px)
-   .overlay        context-menu backdrop: fixed, dimmed, centers its child
+   .overlay        context-menu backdrop: absolute inside .main, dimmed,
+                   centers its child (never behind the caption bar or footer)
    .overlay-panel  centered panel inside .overlay (put a .scan-list in it)
 
    Expected DOM: .header, .main, .caption-bar, .footer as flex children of
-   <body> (or of any 100dvh flex-column container).
+   <body> (or of any 100dvh flex-column container); .overlay inside .main.
 
    DATA-ATTRIBUTE CONTRACT (all on <html> unless noted)
    data-theme = 'high-contrast' | 'light' | 'dark' | 'warm'
                 (missing attribute = high-contrast; tokens live on :root)
    data-hl = 'thin' | 'medium' | 'thick'  → highlight ring 4 / 8 / 12 px
+   data-font = '100'|'125'|'150'|'175'|'200'  → mirrors --font-scale for CSS
+                                                that must react to large print
    data-reduce-motion = 'true'            → kills all animation/transition
    --font-scale (inline style on <html>)  → 1 / 1.25 / 1.5 / 1.75 / 2
                                             (default 1.25; scales ALL rem UI)
@@ -244,12 +248,12 @@ body {
 }
 
 .header-title {
-	font-size: 1.3rem;
+	font-size: min(1.3rem, 24px);
 	font-weight: 800;
 }
 
 .header-screen {
-	font-size: 1.1rem;
+	font-size: min(1.1rem, 21px);
 	font-weight: 600;
 	color: var(--muted);
 }
@@ -258,8 +262,12 @@ body {
 
 .main {
 	position: relative;
-	flex: 1 1 auto;
-	min-height: 0;
+	/* Zero basis so it never sizes to its (scrollable) content, plus a floor so
+	   the caption and footer yield before the scan panel does. `1 0 auto` here
+	   made main grow to the panel's full scroll height and pushed the footer
+	   off screen. */
+	flex: 1 1 0;
+	min-height: min(46dvh, 15rem);
 	background: var(--sky);
 }
 
@@ -280,11 +288,16 @@ body {
 	display: flex;
 	/* 'safe center': centers short lines, top-aligns once content overflows */
 	align-items: safe center;
-	min-height: 4.6rem;
-	/* long chained announcements GROW the bar (the canvas yields) up to 45% of
-	   the screen, then scroll — never clip: switch users cannot scroll */
-	flex: none;
-	max-height: 45dvh;
+	/* Both bounds are capped in dvh as well as rem: at 200% text on a short
+	   viewport the rem values alone squeezed the scan panel below the height of
+	   a single row, so no scroll position could bring the focused item on
+	   screen. The bar still scrolls internally rather than clipping. */
+	min-height: 0;
+	/* Long announcements grow the bar, then scroll INSIDE it. It shrinks before
+	   the scan panel does, because a caption that scrolls is recoverable and a
+	   highlight drawn outside its panel is not. */
+	flex: 0 1 auto;
+	max-height: min(45dvh, 30rem);
 	overflow-y: auto;
 	padding: 0.6rem 1rem;
 	background: var(--caption-bg);
@@ -307,7 +320,10 @@ body {
 	padding: 0.5rem 1rem;
 	background: var(--panel);
 	border-top: 3px solid var(--border);
-	font-size: 1rem;
+	/* Capped for the same reason as the header: the focused item's name is
+	   mirrored in the caption bar in very large print, so this copy does not
+	   need to scale, and at 200% it grew the footer to 221px. */
+	font-size: min(1rem, 19px);
 	font-weight: 600;
 }
 
@@ -322,6 +338,79 @@ body {
 .footer-legend {
 	margin-left: auto;
 	color: var(--muted);
+	/* The legend is a static hint — it is also spoken and in the help page — so
+	   it does not need large print, and at 200% it wrapped to 265px of an
+	   768px viewport, crushing the scan panel below one row. The focused-item
+	   name beside it keeps scaling; this does not. */
+	font-size: min(1rem, 17px);
+}
+
+/* When a viewport cannot hold everything at large print, the scan panel wins:
+   it is the only surface the player acts on, and a row clipped below the fold
+   is a highlight they cannot see. The caption yields first (its text is also
+   spoken), then the legend disappears (also spoken, also on the Help page).
+   The Pause button and the focused-item name never yield. */
+@media (max-height: 860px) {
+	.caption-bar {
+		max-height: min(30dvh, 22rem);
+	}
+}
+
+@media (max-height: 700px) {
+	.caption-bar {
+		max-height: min(24dvh, 18rem);
+	}
+
+	/* Only at large print — at ordinary sizes the legend costs one short line
+	   and is worth keeping. */
+	:root[data-font='175'] .footer-legend,
+	:root[data-font='200'] .footer-legend {
+		display: none;
+	}
+}
+
+/* Very short viewports (a landscape phone, a short window) cannot afford the
+   legend on a second footer line at any text size — it pushed the Pause button
+   off screen at 800x360. The legend is also spoken and on the Help page. */
+@media (max-height: 430px) {
+	.footer-legend {
+		display: none;
+	}
+
+	/* 44px is still a WCAG-AAA touch target; the 2.2rem default is 70px at 200%
+	   and pushed the button itself off screen. */
+	.footer-pause {
+		min-height: 44px;
+	}
+
+	.header {
+		padding: 0.35rem 1rem;
+	}
+}
+
+/* Narrow viewports wrap the caption into many more lines for the same text. */
+@media (max-width: 560px) {
+	.caption-bar {
+		max-height: min(24dvh, 16rem);
+	}
+}
+
+.footer-pause {
+	font: inherit;
+	font-weight: 700;
+	color: var(--text);
+	background: var(--panel);
+	border: 3px solid var(--border);
+	border-radius: 0.4rem;
+	padding: 0.3rem 0.9rem;
+	min-height: 2.2rem;
+	cursor: pointer;
+}
+
+.footer-pause:hover,
+.footer-pause:focus-visible {
+	border-color: var(--accent);
+	color: var(--accent);
 }
 
 /* ---------- scan list ---------- */
@@ -411,20 +500,39 @@ body {
 
 /* ---------- context-menu overlay ---------- */
 
+/* On a short viewport a settings row like "Auto scan: off — two switches" wraps
+   to three or four lines at 200% and cannot fit the panel at any scroll
+   position. The list is the navigation surface; the caption bar still renders
+   the same words in very large print, so nothing becomes unreadable. Placed
+   after .scan-item so the cascade keeps it. */
+@media (max-height: 700px) {
+	.scan-item {
+		font-size: min(1.15rem, 22px);
+		padding: min(0.9rem, 14px) min(1.2rem, 18px);
+		min-height: 56px;
+	}
+}
+
 .overlay {
-	position: fixed;
+	/* absolute within .main, not fixed to the viewport: the caption bar and the
+	   footer are deliberately above the dim scrim (z 101), and a menu row drawn
+	   underneath them cannot be tapped. */
+	position: absolute;
 	inset: 0;
 	z-index: 100;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 1rem;
+	padding: min(1rem, 12px);
 	background: var(--dim);
 }
 
 .overlay-panel {
 	width: min(32rem, 100%);
-	max-height: 85dvh;
+	/* Relative to .overlay (which is inset:0 inside .main), not to the viewport:
+	   85dvh could exceed .main's height, pushing rows outside the play area
+	   where they cannot be tapped. */
+	max-height: 100%;
 	overflow-y: auto;
 	background: var(--panel);
 	border: 4px solid var(--border);

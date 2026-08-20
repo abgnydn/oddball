@@ -1,29 +1,30 @@
 {
-  "name": "oddball",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "You are the golf ball. Pick your shape.",
-  "scripts": {
-    "dev": "vite --port 5184",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check src tools",
-    "format": "biome format --write src tools",
-    "calibrate": "esbuild tools/calibrate.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/calibrate.mjs && node node_modules/.cache/calibrate.mjs",
-    "holes": "esbuild tools/holes.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/holes.mjs && node node_modules/.cache/holes.mjs",
-    "editor-check": "esbuild tools/editor-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/editor-check.mjs && node node_modules/.cache/editor-check.mjs",
-    "input-check": "esbuild tools/input-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/input-check.mjs && node node_modules/.cache/input-check.mjs",
-    "deploy": "wrangler pages deploy dist --project-name oddball"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.7",
-    "@types/node": "^26.1.2",
-    "esbuild": "0.28.1",
-    "typescript": "^5.9.3",
-    "vite": "^7.1.7"
-  },
-  "license": "MIT",
-  "repository": "github:abgnydn/oddball"
+	"name": "oddball",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "You are the golf ball. Pick your shape.",
+	"scripts": {
+		"dev": "vite --port 5184",
+		"build": "tsc --noEmit && vite build",
+		"preview": "vite preview",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check src tools",
+		"format": "biome format --write src tools",
+		"calibrate": "esbuild tools/calibrate.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/calibrate.mjs && node node_modules/.cache/calibrate.mjs",
+		"holes": "esbuild tools/holes.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/holes.mjs && node node_modules/.cache/holes.mjs",
+		"editor-check": "esbuild tools/editor-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/editor-check.mjs && node node_modules/.cache/editor-check.mjs",
+		"input-check": "esbuild tools/input-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/input-check.mjs && node node_modules/.cache/input-check.mjs",
+		"menu-check": "esbuild tools/menu-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/menu-check.mjs && node node_modules/.cache/menu-check.mjs",
+		"deploy": "wrangler pages deploy dist --project-name oddball"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.7",
+		"@types/node": "^26.1.2",
+		"esbuild": "0.28.1",
+		"typescript": "^5.9.3",
+		"vite": "^7.1.7"
+	},
+	"license": "MIT",
+	"repository": "github:abgnydn/oddball"
 }

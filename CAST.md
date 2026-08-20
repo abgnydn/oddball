@@ -1,11 +1,21 @@
 # The cast (Layer 1.5 — applied after the base build lands)
 
-Every playable shape is a character. Some of them have disabilities. The rule that
-makes this work: **a disability is never a debuff.** Each character is "can't X —
-and that's why they're amazing at Y." The compensating ability IS their mechanical
-identity, the language always leads with what they can do, and the narrator speaks
-about them matter-of-factly, never with pity. Not every character gets a mapping;
-forcing all six would cheapen it.
+> **This layer has not been read by the switch-access community it is written
+> for.** That review happens before any submission to the NARBE library, and it
+> is the review that decides whether this layer ships at all. Read the table
+> below with that pending: "can't X, so they're great at Y" is a trope with a
+> long history of being written *about* disabled people rather than *by* them,
+> and three of the four mappings here are narrative applied to physics numbers
+> that already existed — the right-hand column says which.
+
+Every playable shape is a character. Some of them have disabilities.
+
+The design rule this layer was built on — and the thing the review above has to
+rule on — is **a disability is never a debuff**: the compensating ability is the
+character's mechanical identity, the language leads with what they can do, and
+the narrator is matter-of-fact rather than admiring. That is a compensation
+framing, and it is contested; it is written here as the assumption under review,
+not as a settled principle. Two of the six shapes are left unmapped.
 
 The game's strategy statement is the disability-positive statement: no shape is
 ranked above another, and each purposeful shape has a hole where it is the right
@@ -23,12 +33,16 @@ that, no more).
 | Star | **Boing** | none — pure joy | Chaos bounces. Deliberately unmapped. |
 | Egg | **Egg** | none — pure luck | Huge variance. Deliberately unmapped, comic relief. |
 
-## Rack blurbs (spoken on focus, 3rd-grade level, ability-first)
+## Rack blurbs (spoken on focus, ability-first)
 
-- Dot: "Dot can't see. But she hears everything. She listens for the beeper at the cup, and rolls right to it."
-- Brick: "Brick can't hear. The wind can't trick him. He lands, and he stays."
-- Glide: "Glide doesn't walk. Glide flies. Nobody flies farther. But the wind pushes them around."
-- Penny: "Penny doesn't talk. She taps once for yes. She flies high, lands soft, and stays right there."
+These are the shipped strings from `src/tuning.ts`. They were rewritten once: the
+first four each opened with the deficit ("Dot can't see. But she hears
+everything."), which is the construction this file's own rule forbids.
+
+- Dot: "Dot hears everything. She listens for the beeper at the cup, and rolls right to it. She does not need to see it."
+- Brick: "Brick lands, and he stays. Wind moves him less than any other shape. Brick is deaf."
+- Glide: "Glide flies, and nobody flies farther. The wind pushes them around the most. Glide does not walk."
+- Penny: "Penny flies high, lands soft, and stays right there. She taps once for yes — she says what she needs to."
 - Boing: "Boing just loves to bounce. Boing! Where will he land? Even he doesn't know."
 - Egg: "The egg. Who knows where it will go? Not even the egg."
 

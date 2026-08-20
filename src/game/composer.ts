@@ -106,7 +106,7 @@ export function composeHole(params: EditorParams): HoleSpec {
 	zones.push({ from: sandIdx === 1 ? L + 25 : greenTo, to: end, surface: 'rough' })
 	zones.sort((a, b) => a.from - b.from)
 
-	// Plain 3rd-grade words straight from the option labels.
+	// Plain short words straight from the option labels.
 	const parts = [`A ${lengthOpt.label.toLowerCase()} hole.`]
 	parts.push(`${EDITOR_OPTIONS.hills[hillsIdx]!.label}.`)
 	if (water) parts.push(`${EDITOR_OPTIONS.water[waterIdx]!.label}.`)

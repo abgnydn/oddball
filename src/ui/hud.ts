@@ -10,6 +10,8 @@ export interface HudItemSpec {
 	id: string
 	label: string
 	speak: string
+	/** See ScanItem.hold — warnings only. */
+	hold?: boolean
 	glyph?: ShapeId // character portrait drawn beside the label (rack rows)
 }
 
@@ -17,6 +19,9 @@ export interface Hud {
 	canvas: HTMLCanvasElement
 	setScreen(name: string): void
 	setMode(name: string): void
+	/** Click handler for the on-screen Pause button (pointer/touch parity with
+	 *  holding Enter). Switch users also have a scannable Menu row in the rack. */
+	onPause(cb: () => void): void
 	/** Replace the scan panel contents; returns ScanItems with live elements. */
 	scanList(items: HudItemSpec[]): ScanItem[]
 	/** Show canvas instead of the scan panel (flight view) or both. */
@@ -41,13 +46,13 @@ const el = <K extends keyof HTMLElementTagNameMap>(
 	return n
 }
 
-const buildList = (container: HTMLElement, items: HudItemSpec[]): ScanItem[] => {
+const buildList = (container: HTMLElement, items: HudItemSpec[], idPrefix = 'scan'): ScanItem[] => {
 	container.textContent = ''
 	const list = el('div', 'scan-list')
 	container.appendChild(list)
 	return items.map((spec) => {
 		const row = el('div', 'scan-item')
-		row.id = `scan-${spec.id}`
+		row.id = `${idPrefix}-${spec.id}`
 		if (spec.glyph) {
 			row.style.display = 'flex'
 			row.style.alignItems = 'center'
@@ -61,7 +66,13 @@ const buildList = (container: HTMLElement, items: HudItemSpec[]): ScanItem[] => 
 		}
 		row.appendChild(el('span', '', spec.label))
 		list.appendChild(row)
-		return { id: spec.id, label: spec.label, speak: spec.speak, el: row }
+		return {
+			id: spec.id,
+			label: spec.label,
+			speak: spec.speak,
+			el: row,
+			...(spec.hold === true ? { hold: true } : {}),
+		}
 	})
 }
 
@@ -81,7 +92,7 @@ export function createHud(root: HTMLElement): Hud {
 	canvasWrap.appendChild(canvas)
 	const panel = el('div', 'scan-panel')
 	panel.style.cssText =
-		'width:clamp(16rem, 34%, 30rem);overflow-y:auto;scroll-padding-block:1rem;padding:1rem;display:flex;flex-direction:column;align-items:stretch;background:var(--panel);border-left:3px solid var(--border);'
+		'width:clamp(min(16rem, 46vw), 34%, 30rem);overflow-y:auto;scroll-padding-block:min(1rem, 12px);padding:min(1rem, 14px);display:flex;flex-direction:column;align-items:stretch;background:var(--panel);border-left:3px solid var(--border);'
 	main.append(canvasWrap, panel)
 
 	const captionBar = el('div', 'caption-bar')
@@ -89,15 +100,25 @@ export function createHud(root: HTMLElement): Hud {
 	const footer = el('footer', 'footer')
 	const mode = el('div', 'footer-mode')
 	const focus = el('div', 'footer-focus')
-	const legend = el('div', 'footer-legend', 'Space = next · Return = select · Hold Return = menu')
-	footer.append(mode, focus, legend)
+	const legend = el(
+		'div',
+		'footer-legend',
+		'Space = next · Hold Space = back · Enter = pick · Hold Enter = menu',
+	)
+	// On-screen Pause, required alongside the hold gesture so mouse, touch and
+	// caregivers have a visible route to it. Switch users reach the menu by
+	// holding Enter, or by the scannable Menu row at the end of the rack.
+	const pauseBtn = el('button', 'footer-pause', 'Pause')
+	pauseBtn.type = 'button'
+	footer.append(mode, focus, legend, pauseBtn)
 
 	const overlayEl = el('div', 'overlay')
 	const overlayPanel = el('div', 'overlay-panel')
 	overlayEl.appendChild(overlayPanel)
 	overlayEl.style.display = 'none'
 
-	root.append(header, main, captionBar, footer, overlayEl)
+	main.appendChild(overlayEl) // scoped to the play area — see .overlay in theme.css
+	root.append(header, main, captionBar, footer)
 
 	return {
 		canvas,
@@ -106,6 +127,9 @@ export function createHud(root: HTMLElement): Hud {
 		},
 		setMode(name) {
 			mode.textContent = name
+		},
+		onPause(cb) {
+			pauseBtn.addEventListener('click', cb)
 		},
 		scanList(items) {
 			return buildList(panel, items)
@@ -120,12 +144,20 @@ export function createHud(root: HTMLElement): Hud {
 			focus.textContent = label
 		},
 		overlay(items) {
+			overlayEl.setAttribute('role', 'dialog')
+			overlayEl.setAttribute('aria-modal', 'true')
+			main.setAttribute('aria-hidden', 'true')
+			panel.setAttribute('aria-hidden', 'true')
 			overlayEl.style.display = ''
-			return buildList(overlayPanel, items)
+			return buildList(overlayPanel, items, 'menuscan')
 		},
 		hideOverlay() {
 			overlayEl.style.display = 'none'
 			overlayPanel.textContent = ''
+			overlayEl.removeAttribute('role')
+			overlayEl.removeAttribute('aria-modal')
+			main.removeAttribute('aria-hidden')
+			panel.removeAttribute('aria-hidden')
 		},
 		overlayOpen() {
 			return overlayEl.style.display !== 'none'
@@ -137,6 +169,10 @@ export function createHud(root: HTMLElement): Hud {
 			if (s.reduceMotion) html.dataset.reduceMotion = 'true'
 			else delete html.dataset.reduceMotion
 			html.style.setProperty('--font-scale', String((s.fontScale as FontScale) / 100))
+			// Mirrored as an attribute so CSS can react to large print: the layout
+			// only has to drop the footer legend when the text is big AND the
+			// viewport is short, not on every short viewport.
+			html.dataset.font = String(s.fontScale)
 		},
 	}
 }

@@ -8,7 +8,7 @@ export type ShapeId = 'sphere' | 'cube' | 'disc' | 'egg' | 'star' | 'pancake'
 export interface ShapeSpec {
 	id: ShapeId
 	name: string // spoken + shown name ("Ball", "Cube", ...)
-	blurb: string // spoken on focus: what it does, 3rd-grade words
+	blurb: string // spoken on focus: what it does, in short common words
 	maxCarry: number // m — cap on the carry the golfer can get with this shape
 	launchDeg: number // launch angle above horizontal
 	drag: number // quadratic drag coefficient (1/m), applied to airspeed
@@ -126,10 +126,10 @@ export interface Sim {
 
 export type SwitchEvent =
 	| 'next' // space release (< long-hold threshold)
-	| 'select' // return release (< threshold)
-	| 'menu' // return held to threshold (fires at threshold)
-	| 'autostart' // space held to threshold
-	| 'autostop' // space released after auto-scan
+	| 'select' // return release short of the menu threshold
+	| 'menu' // return held to threshold; that press's release is consumed
+	| 'autostart' // space held to threshold → BACKWARD scanning while held
+	| 'autostop' // space released after backward scanning
 
 export interface SwitchInput {
 	on(cb: (e: SwitchEvent) => void): void
@@ -143,12 +143,17 @@ export interface ScanItem {
 	id: string
 	label: string // shown
 	speak: string // spoken on focus
+	/** Hold the Auto Scan timer until this item's speech finishes. For warnings
+	 *  only: an unspoken warning is no warning. Ordinary labels must NOT set it,
+	 *  or speech length would override the player's chosen scan speed. */
+	hold?: boolean
 	el?: HTMLElement // when present: highlight ring target + click-to-select
 }
 
 export interface Scanner {
-	/** Replace the scan list. Highlight starts on startIndex (default 0) but does
-	 *  not advance until the first 'next'. Includes the wrap deadzone step. */
+	/** Replace the scan list. Highlight starts on startIndex (default 0); with
+	 *  Auto Scan off it does not advance until the first 'next', and with Auto
+	 *  Scan on it begins advancing immediately. Includes the wrap deadzone step. */
 	setItems(items: ScanItem[], opts?: { startIndex?: number }): void
 	clear(): void
 	/** index === -1 for the wrap-deadzone step (no item focused). */
@@ -162,20 +167,33 @@ export interface Scanner {
 	 *  selects it (visible fill via the item's --dwell custom property, 0..1).
 	 *  null disables. Pointer leave cancels and resets the fill. */
 	setDwell(ms: number | null): void
+	/** Auto Scan (single-switch mode): when on, the highlight steps forward by
+	 *  itself at scanMs on every list; Space still steps manually (and resets
+	 *  the beat); hold-Space backward scanning takes priority while held. */
+	setAutoScan(on: boolean): void
+	/** Suspend Auto Scan's timer while narration is speaking. Manual stepping and
+	 *  hold-Space backward scanning are unaffected — this only gates the timer. */
+	setAutoHold(on: boolean): void
 }
 
 // ---------- speech ----------
 
 export interface TTS {
 	/** interrupt (default true) cancels current speech first. Never blocks input.
+	 *  hold (default true) marks this as narration the scan must wait for — pass
+	 *  false for the per-item focus label, which is the scan's own voice.
 	 *  Every utterance is console.log-ed as `[tts] <text>` and captioned. */
-	speak(text: string, opts?: { interrupt?: boolean }): void
+	speak(text: string, opts?: { interrupt?: boolean; hold?: boolean }): void
 	stop(): void
 	setRate(rate: number): void // 0.5..2, default 1
 	setVolume(v: number): void // 0..1
 	setEnabled(on: boolean): void
 	/** Caption sink — hud registers this to mirror speech on screen. */
 	onCaption(cb: (text: string) => void): void
+	/** Fires true while a holding utterance is actually being spoken, false when
+	 *  it ends. Auto Scan suspends itself in between so a hands-free player is
+	 *  never stepped off an item while the game is still talking to them. */
+	onHoldChange(cb: (holding: boolean) => void): void
 }
 
 // ---------- audio ----------
@@ -244,7 +262,7 @@ export interface Settings {
 	ttsOn: boolean
 	ttsRate: number
 	ttsVolume: number
-	scanMs: number // auto-scan step interval
+	scanMs: number // interval between scan steps (auto and held-backward alike)
 	fontScale: FontScale
 	theme: Theme
 	highlightThick: HighlightThickness
@@ -252,6 +270,9 @@ export interface Settings {
 	reduceMotion: boolean
 	flightTone: boolean // sonify the ball's height while it flies
 	dwell: DwellSetting // hover-to-select for head/eye-tracking users
+	/** Single-switch mode: the highlight advances by itself at scanMs, so the
+	 *  player only ever presses Enter (the hub's one-switch scheme). */
+	autoScan: boolean
 }
 
 export interface RoundSave {

@@ -29,7 +29,7 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 		id: 'sphere',
 		name: 'Dot',
 		blurb:
-			"Dot can't see. But she hears everything. She listens for the beeper at the cup, and rolls right to it.",
+			'Dot hears everything. She listens for the beeper at the cup, and rolls right to it. She does not need to see it.',
 		maxCarry: 155,
 		launchDeg: 14,
 		drag: 0.008,
@@ -44,7 +44,7 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	cube: {
 		id: 'cube',
 		name: 'Brick',
-		blurb: "Brick can't hear. The wind can't trick him. He lands, and he stays.",
+		blurb: 'Brick lands, and he stays. Wind moves him less than any other shape. Brick is deaf.',
 		maxCarry: 85,
 		launchDeg: 24,
 		drag: 0.02,
@@ -59,7 +59,7 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 		id: 'disc',
 		name: 'Glide',
 		blurb:
-			"Glide doesn't walk. Glide flies. Nobody flies farther. But the wind pushes them around.",
+			'Glide flies, and nobody flies farther. The wind pushes them around the most. Glide does not walk.',
 		maxCarry: 235,
 		launchDeg: 11,
 		drag: 0.006,
@@ -102,7 +102,7 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 		id: 'pancake',
 		name: 'Penny',
 		blurb:
-			"Penny doesn't talk. She taps once for yes. She flies high, lands soft, and stays right there.",
+			'Penny flies high, lands soft, and stays right there. She taps once for yes — she says what she needs to.',
 		maxCarry: 130,
 		launchDeg: 38,
 		drag: 0.015,
@@ -475,7 +475,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	ttsOn: true,
 	ttsRate: 1,
 	ttsVolume: 1,
-	scanMs: 1200,
+	scanMs: 2000, // the hub's shipped default (their shared/scan-manager.js)
 	fontScale: 125,
 	theme: 'high-contrast',
 	highlightThick: 'medium',
@@ -483,12 +483,39 @@ export const DEFAULT_SETTINGS: Settings = {
 	reduceMotion: false,
 	flightTone: true,
 	dwell: 'off',
+	autoScan: false,
 }
 
 export const DWELL_MS = { slow: 2000, fast: 1200 } as const
 
-export const SPACE_HOLD_MS = 3000 // auto-scan threshold
-export const RETURN_HOLD_MS = 1500 // context-menu threshold
+export const SPACE_HOLD_MS = 3000 // hold-Space → backward scanning (shipped-hub scheme)
+// Context-menu threshold. §4 gives the convention as ~3 s to scan backwards and
+// ~5 s to pause and asks new games to match, while noting no shared file enforces
+// either. This build uses 3 s and so departs from the ~5 s figure; DESIGN.md
+// lists it. BENNYSMINIGOLF uses 6 s for
+// the same gesture (gameplay only); BENNYSFOOTBALL has no Enter-hold menu at
+// all. 3 s is this game's own middle, matching its hold-Space threshold. Long
+// enough that a deliberate select is never mistaken for a menu request, and the
+// release that opens the menu is consumed, so a misfire opens a menu the player
+// closes with one more press rather than picking something they never chose.
+export const RETURN_HOLD_MS = 3000
+export const INPUT_COOLDOWN_MS = 250
+
+/** px the pointer must travel from where it sat when a list was rebuilt before
+ *  hover-to-pick will start again. Any movement at all would be defeated by an
+ *  eye tracker's constant jitter, which is the input this guard exists for; a
+ *  deliberate move to another row is far larger than this. */
+export const DWELL_REARM_PX = 24
+
+/** The scan-speed ladder, and the step the Scan Speed row takes. Exported so the
+ *  harness pins THIS function rather than a copy of it: a speed saved by an older
+ *  build sits between rungs, and must step UP to the next slower one rather than
+ *  snapping to the fastest — the player who saved 1.6 s did it because 1 s was
+ *  too fast for them. Values from the hub's shared/scan-manager.js SCAN_SPEEDS. */
+export const SCAN_SPEEDS = [1000, 2000, 3000, 4000] as const
+
+export const nextScanMs = (cur: number): number =>
+	SCAN_SPEEDS.find((ms) => ms > cur) ?? SCAN_SPEEDS[0]
 
 export const YARDS_PER_M = 1.09361
 export const yd = (m: number): number => Math.round(m * YARDS_PER_M)
