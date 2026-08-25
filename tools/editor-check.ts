@@ -14,9 +14,9 @@ import type { BallState, EditorParams, HoleSpec, ShapeId } from '../src/types'
 const SEEDS = 40
 const MIN_RATE = 0.9
 // Generous on purpose: this is a smoke test that par estimation is not
-// pathological, not a benchmark. A cold first run on a loaded machine was
-// measured at 4014 ms, which failed the old 2000 ms gate and said nothing
-// about the code — the par values were byte-identical across every run.
+// pathological, not a benchmark. A cold run on a loaded machine blew the old
+// 2000 ms gate while the par values stayed byte-identical across every run, so
+// the gate was reporting machine load, not code.
 const PAR_MS_BUDGET = 15000
 const TRY_SHAPES: ShapeId[] = ['sphere', 'cube', 'disc', 'pancake']
 

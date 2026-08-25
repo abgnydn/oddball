@@ -57,9 +57,14 @@ below lists every place that shows.
   press in a scene — no highlight moves on its own before that (the first list
   still shows highlight on item 0, but nothing advances). With Auto Scan on, the
   highlight begins advancing as soon as a list appears.
-- **Wrap deadzone**: before the highlight wraps from the last item back to the first,
-  one scan step lands on "no highlight" (nothing focused, nothing spoken). The next
-  step focuses item 0.
+- **Wrap deadzone**: when the player is stepping the scan themselves, one scan step
+  before the wrap lands on "no highlight" (nothing focused, nothing spoken) so a
+  held switch does not loop forever unnoticed. The next step focuses item 0.
+  Auto Scan SKIPS it — an automatic timer stepping into a silent slot reads as the
+  app having died. Neither behaviour comes from the contract: `ACCESSIBILITY.md`
+  does not specify wrap, and `shared/scan-manager.js` owns settings and the input
+  cooldown only — it has no DOM, focus or index code, so no shared module moves a
+  highlight. This is an addition, not a departure.
 - Scan order is fixed top-to-bottom; never reordered mid-session.
 - Returning from a submenu restores the highlight to the item that opened it.
 - **Pointer (optional but required to work)**: click an item = select it.
@@ -88,12 +93,17 @@ modules — so some contract items are met differently:
 | §5/§10: Auto Scan and Scan Speed come from `NarbeScanManager`, so "a player configures their access once, not twenty times" | its own copies, saved under `oddball-save-v1`. Someone who set their scan speed in the hub sets it again here |
 | §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan, and the game-specific rows sit after both rather than before |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled here (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
+| §9: "large targets (**≥ 64 px** on tablet)" | 64 px is the base size, and it holds at every text scale on a tablet-shaped viewport. Two viewport rules undercut it: under 700 px of height a scan row caps at 56 px, and under 560 px of height the Pause button caps at 44 px. Both were added because the full-size controls pushed themselves or the footer off a short screen — a target you cannot reach at all is worse than one 8 px under — but 56 and 44 are below the rule |
+| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on every screen with a shot rack, via the scannable **Menu** row. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight — they can only wait it out |
+| §5: `tutorial-modal.js` provides the shared how-to-play modal | not used, and not reimplemented as a modal. How to play is a scannable **Help** screen in the same list grammar as everything else. A standalone build cannot call `window.BennyTutorial`, and there is no video to embed |
 
 Two items are met by a different route rather than skipped: the pause menu has
 both an on-screen Pause button and a scannable **Menu** row in the shot rack, so
 a player who cannot sustain a 3 s hold still reaches settings, a new round and
-the exit (§12 calls a hold-only pause "a locked door"); and the hole editor is
-fully scannable, so §7's one-way-door warning has nothing to catch.
+the exit (§12 calls a hold-only pause "a locked door") — everywhere except the
+flight animation, which has no rack and so is hold-or-pointer only, as the table
+says; and the hole editor is fully scannable, so §7's one-way-door warning has
+nothing to catch.
 
 §12 also prices that Menu row, and the price is real: a scannable control "puts
 another stop on the scan cycle, and the player passes that stop on *every single
@@ -231,8 +241,15 @@ Pars are set by measurement (harness), not by hand.
   the scan rather than stranding a hands-free player, and that a settings row's
   spoken explanation matches the value it is reading. Most of those were real
   defects, and they survived a green suite because no other harness imported
-  `flow.ts`. Mutate the shipped code and this one must go red — it has been
-  checked that way against ten separate mutations, plus one pair applied together.
+  `flow.ts`.
+- `pnpm mutate` — proof that the harnesses are not vacuous. It breaks the shipped
+  code one edit at a time (twelve single regressions, plus one pair applied
+  together to check that two faults do not cancel out) and requires the named
+  harness to go red for every one. Eleven are caught by `menu-check`; the
+  twelfth, dropping the switch machine's per-key bounce guard, by `input-check`.
+  The mutation list is the source of that count — do not restate it by hand.
+  Two of these mutations survived the whole suite the first time this was run,
+  which is how the missing Auto-Scan-wrap and pointer-bounce checks got written.
 
 What no harness covers, stated plainly: no harness EXECUTES `main.ts`,
 `draw.ts`, `hud.ts`, `sfx.ts` or `save.ts` — `menu-check` imports two types from
@@ -240,8 +257,11 @@ What no harness covers, stated plainly: no harness EXECUTES `main.ts`,
 from those files reaches a harness bundle. The pointer paths (click-to-select,
 click-and-hold, the Pause button, the click-swallow after a hold), hover-to-pick
 and every layout question are therefore verified only by driving a real browser
-against the built bundle. Every defect this project shipped and then had to fix
-lived in code a harness could not see.
+against the built bundle. Most defects this project shipped and then had to fix
+lived in code no harness executes. One did not: the published build's
+`input-check` ran the hold-Space path and asserted the wrong contract, so a green
+harness certified the wrong behaviour. A harness is only as good as the contract
+it encodes.
 - Harness failures are exit-code failures with a printed table. These are the safety
   net — tune `tuning.ts` until they pass; never weaken an assertion to pass.
 
@@ -257,8 +277,10 @@ lived in code a harness could not see.
 - **Make a Hole**: parameter-combo editor (length/ground/water/sand/wind rows that
   cycle like settings) — every combo is playable BY CONSTRUCTION (composer clamps
   geometry; tools/editor-check.ts asserts it). Par is MEASURED by simulating the
-  composed hole (`pnpm editor-check` measures a mean of 280–440 ms over the 62
-  combinations, with a slow tail past 1 s). Up to 10 saved holes ("My Hole N").
+  composed hole; `pnpm editor-check` prints the mean and max across all 62
+  combinations on the machine it ran on (this machine: mean ~162 ms, max ~325 ms
+  over four runs). The gate is 15 s, and it is a smoke test, not a benchmark —
+  read the printed line, not this one. Up to 10 saved holes ("My Hole N").
 - **Dwell-to-select**: hover an item for 1.2/2 s (setting) to select — head- and
   eye-tracking users. Visible fill via the --dwell custom property.
 - **Flight sonification**: a quiet tone glides with the ball's height (setting;

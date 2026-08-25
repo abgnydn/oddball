@@ -4,6 +4,7 @@
 import './theme.css'
 import { GAME_TITLE } from '../game/lines'
 import { drawShapeGlyph } from '../render/draw'
+import { INPUT_COOLDOWN_MS } from '../tuning'
 import type { FontScale, ScanItem, Settings, ShapeId } from '../types'
 
 export interface HudItemSpec {
@@ -58,7 +59,7 @@ const buildList = (container: HTMLElement, items: HudItemSpec[], idPrefix = 'sca
 			row.style.alignItems = 'center'
 			row.style.gap = '0.8rem'
 			const glyph = document.createElement('canvas')
-			glyph.style.cssText = 'width:2.75rem;height:2.75rem;flex:none;'
+			glyph.className = 'scan-glyph' // sized by theme.css so it can cap on short screens
 			row.appendChild(glyph)
 			const shape = spec.glyph
 			// draw after layout so the canvas has real CSS pixels to measure
@@ -90,9 +91,7 @@ export function createHud(root: HTMLElement): Hud {
 	canvasWrap.style.cssText = 'position:relative;flex:1;min-width:0;'
 	const canvas = document.createElement('canvas')
 	canvasWrap.appendChild(canvas)
-	const panel = el('div', 'scan-panel')
-	panel.style.cssText =
-		'width:clamp(min(16rem, 46vw), 34%, 30rem);overflow-y:auto;scroll-padding-block:min(1rem, 12px);padding:min(1rem, 14px);display:flex;flex-direction:column;align-items:stretch;background:var(--panel);border-left:3px solid var(--border);'
+	const panel = el('div', 'scan-panel') // laid out by theme.css, not inline
 	main.append(canvasWrap, panel)
 
 	const captionBar = el('div', 'caption-bar')
@@ -129,7 +128,15 @@ export function createHud(root: HTMLElement): Hud {
 			mode.textContent = name
 		},
 		onPause(cb) {
-			pauseBtn.addEventListener('click', cb)
+			// Same bounce guard the scan rows get: an unguarded toggle made a
+			// double-click open the menu and shut it again, so Pause looked dead.
+			let last = -1e9
+			pauseBtn.addEventListener('click', () => {
+				const now = Date.now()
+				if (now - last < INPUT_COOLDOWN_MS) return
+				last = now
+				cb()
+			})
 		},
 		scanList(items) {
 			return buildList(panel, items)
@@ -146,7 +153,9 @@ export function createHud(root: HTMLElement): Hud {
 		overlay(items) {
 			overlayEl.setAttribute('role', 'dialog')
 			overlayEl.setAttribute('aria-modal', 'true')
-			main.setAttribute('aria-hidden', 'true')
+			// NOT on `main` — the overlay is inside it, so hiding main hides the
+			// menu too. Hide the two things actually behind the scrim.
+			canvasWrap.setAttribute('aria-hidden', 'true')
 			panel.setAttribute('aria-hidden', 'true')
 			overlayEl.style.display = ''
 			return buildList(overlayPanel, items, 'menuscan')
@@ -156,7 +165,7 @@ export function createHud(root: HTMLElement): Hud {
 			overlayPanel.textContent = ''
 			overlayEl.removeAttribute('role')
 			overlayEl.removeAttribute('aria-modal')
-			main.removeAttribute('aria-hidden')
+			canvasWrap.removeAttribute('aria-hidden')
 			panel.removeAttribute('aria-hidden')
 		},
 		overlayOpen() {

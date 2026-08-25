@@ -17,7 +17,7 @@ import { createScanner } from '../src/input/scanner'
 import { createSwitchMachine } from '../src/input/switch'
 import { createSim } from '../src/sim/physics'
 import { createTTS } from '../src/speech/tts'
-import { SHAPE_ORDER } from '../src/tuning'
+import { INPUT_COOLDOWN_MS, SHAPE_ORDER } from '../src/tuning'
 import type { CustomHole, Renderer, SaveAPI, SaveData, ScanItem, Settings, SFX } from '../src/types'
 import type { Hud, HudItemSpec } from '../src/ui/hud'
 
@@ -288,6 +288,16 @@ const confirmChecks = async () => {
 		'an unspoken warning is no warning at all',
 	)
 
+	// A confirm must be a separate act. A click that arms and a keypress a few ms
+	// later slipped through both bounce guards, because they keep separate clocks.
+	t.pickOverlay('new')
+	check(
+		'a second pick INSIDE the bounce window does not act',
+		JSON.stringify(t.stored().round) === before,
+		'that is a bounce, not a decision',
+	)
+
+	await sleep(INPUT_COOLDOWN_MS + 60)
 	t.pickOverlay('new')
 	check(
 		'a second pick of New round DOES start over',
@@ -316,6 +326,7 @@ const exitConfirmChecks = async () => {
 		over(t, 'exit')?.hold === true,
 		'an unspoken warning is no warning at all',
 	)
+	await sleep(INPUT_COOLDOWN_MS + 60)
 	t.pickOverlay('exit')
 	check('a second pick of Exit leaves', !t.hud.overlayOpen())
 }
@@ -338,7 +349,7 @@ const scannableMenuChecks = () => {
 
 // ---------- 3c. deleting a hole someone built is two-step ----------
 
-const deleteChecks = () => {
+const deleteChecks = async () => {
 	const t = makeHarness({ ...BASE_SETTINGS }, [
 		{ name: 'My Hole 1', params: { length: 1, hills: 0, water: 0, sand: 0, wind: 2 } },
 	])
@@ -367,10 +378,28 @@ const deleteChecks = () => {
 	if (armed) {
 		t.pickList('delete')
 		check(
-			'a second pick DOES delete it',
-			(t.stored().customHoles ?? []).length === 0,
-			`${(t.stored().customHoles ?? []).length} left`,
+			'a second Delete inside the bounce window does not delete',
+			(t.stored().customHoles ?? []).length === 1,
+			'that is a bounce, not a decision',
 		)
+		await sleep(INPUT_COOLDOWN_MS + 60)
+		// Guarded: if the bounce guard above is broken the hole is already gone
+		// and the row with it, and picking a row that is not there throws — which
+		// aborts the run and swallows every check after this one.
+		if (t.listIds().includes('delete')) {
+			t.pickList('delete')
+			check(
+				'a second pick DOES delete it',
+				(t.stored().customHoles ?? []).length === 0,
+				`${(t.stored().customHoles ?? []).length} left`,
+			)
+		} else {
+			check(
+				'a second pick DOES delete it',
+				false,
+				`no Delete row left to pick — list = [${t.listIds().join()}]`,
+			)
+		}
 	} else check('a second pick DOES delete it', false, 'never reached — it was already gone')
 }
 
@@ -451,10 +480,9 @@ const ttsHoldChecks = async () => {
 }
 
 // A browser can accept an utterance and never report that it ENDED. Headless
-// Chromium does exactly that: onstart arrives (measured between 8 and 33 ms
-// across runs) and onend never does, and Chrome has a long-standing bug for
-// long utterances. Without the watchdog the hold never drops and a hands-free
-// player is stranded on one item for good.
+// Chromium does exactly that: onstart arrives and onend never does, and Chrome
+// has a long-standing bug for long utterances. Without the watchdog the hold
+// never drops and a hands-free player is stranded on one item for good.
 const watchdogChecks = async () => {
 	const g = globalThis as Record<string, unknown>
 	g.SpeechSynthesisUtterance = class {
@@ -512,15 +540,134 @@ const settingsSpeechChecks = () => {
 	}
 }
 
+// ---------- 4b. Auto Scan wraps without a silent step ----------
+
+// The wrap deadzone is deliberate under a deliberate press and deliberately
+// SKIPPED under Auto Scan: an automatic timer landing on a slot where nothing
+// is focused and Enter does nothing reads as the app having died, and Enter is
+// the whole interface for a one-switch player. Both harnesses were blind to
+// this until a mutation that made Auto Scan step into the deadzone left the
+// entire suite green.
+const autoWrapChecks = async () => {
+	const sc = createScanner()
+	const log: number[] = []
+	sc.onFocus((_i, idx) => log.push(idx))
+	sc.setItems([
+		{ id: 'a', label: 'A', speak: 'A' },
+		{ id: 'b', label: 'B', speak: 'B' },
+		{ id: 'c', label: 'C', speak: 'C' },
+	])
+	sc.setScanMs(30)
+	sc.setAutoScan(true)
+	await sleep(30 * 6 + 40)
+	sc.setAutoScan(false)
+	// snapshot BEFORE clear(): clear() legitimately fires (null, -1) to blank the
+	// footer, and letting that land in the log would mask the very thing checked
+	const seen = log.slice()
+	sc.clear()
+	check(
+		'Auto Scan never focuses the wrap deadzone',
+		seen.length > 3 && !seen.includes(-1),
+		`focus order = [${seen.join()}]`,
+	)
+	check(
+		'Auto Scan wraps from the last item straight to the first',
+		seen.join(',').includes('2,0'),
+		`focus order = [${seen.join()}]`,
+	)
+
+	// ...and a deliberate press still gets the beat to reconsider.
+	const sc2 = createScanner()
+	const log2: number[] = []
+	sc2.onFocus((_i, idx) => log2.push(idx))
+	sc2.setItems([
+		{ id: 'a', label: 'A', speak: 'A' },
+		{ id: 'b', label: 'B', speak: 'B' },
+	])
+	sc2.handle('next')
+	sc2.handle('next')
+	const seen2 = log2.slice() // same reason
+	sc2.clear()
+	check(
+		'a deliberate press still lands on the deadzone before wrapping',
+		seen2.includes(-1),
+		`focus order = [${seen2.join()}]`,
+	)
+}
+
+// ---------- 4c. a pointer select obeys the same 250 ms bounce window ----------
+
+// §4 of the hub contract puts the debounce on EVERY input, not just the keys:
+// "You do not need to write your own debounce, and you should not". A switch
+// wired to a mouse button, and a head-tracker's dwell, both arrive here.
+interface FakeEl {
+	click: () => void
+	style: { setProperty: () => void; removeProperty: () => void }
+	setAttribute: () => void
+	removeAttribute: () => void
+	addEventListener: (type: string, fn: () => void) => void
+	removeEventListener: () => void
+	parentElement: { setAttribute: () => void }
+	scrollIntoView: () => void
+}
+
+const fakeEl = (): FakeEl => {
+	const handlers: Record<string, () => void> = {}
+	return {
+		click: () => handlers.click?.(),
+		style: { setProperty: () => {}, removeProperty: () => {} },
+		setAttribute: () => {},
+		removeAttribute: () => {},
+		addEventListener: (type, fn) => {
+			handlers[type] = fn
+		},
+		removeEventListener: () => {},
+		parentElement: { setAttribute: () => {} },
+		scrollIntoView: () => {},
+	}
+}
+
+const pointerBounceChecks = async () => {
+	const sc = createScanner()
+	const picked: number[] = []
+	sc.onSelect((_i, idx) => picked.push(idx))
+	const els = [fakeEl(), fakeEl()]
+	sc.setItems(
+		els.map((el, i) => ({
+			id: `i${i}`,
+			label: `I${i}`,
+			speak: `I${i}`,
+			el: el as unknown as HTMLElement,
+		})),
+	)
+	els[0]?.click()
+	els[1]?.click()
+	check(
+		'a second click inside the bounce window does not select',
+		picked.length === 1,
+		`selected [${picked.join()}]`,
+	)
+	await sleep(INPUT_COOLDOWN_MS + 60)
+	els[1]?.click()
+	check(
+		'a click after the window selects normally',
+		picked.length === 2 && picked[1] === 1,
+		`selected [${picked.join()}]`,
+	)
+	sc.clear()
+}
+
 const main = async () => {
 	await latchChecks()
 	await slowPickInsideMenuChecks()
 	await autoScanMenuChecks()
 	await confirmChecks()
 	scannableMenuChecks()
-	deleteChecks()
+	await deleteChecks()
 	await exitConfirmChecks()
 	await holdChecks()
+	await autoWrapChecks()
+	await pointerBounceChecks()
 	await ttsHoldChecks()
 	await watchdogChecks()
 	settingsSpeechChecks()

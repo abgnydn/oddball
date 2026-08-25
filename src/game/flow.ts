@@ -11,6 +11,7 @@ import {
 	COURSES,
 	DWELL_MS,
 	EDITOR_OPTIONS,
+	INPUT_COOLDOWN_MS,
 	MAX_STROKES,
 	nextScanMs,
 	RANGE,
@@ -100,6 +101,7 @@ export function createFlow(deps: Deps): Flow {
 	let flightToken = 0
 	let flightPaused = false
 	let rangeRng = 1
+	let armedDeleteAt = 0 // see armedAt in openMenu: a confirm is not a bounce
 	// The previous stroke's story: its flight path stays as a faded ghost, and
 	// the resting ball keeps the shape you chose until you choose again.
 	let lastTrail: FlightPoint[] | null = null
@@ -425,7 +427,7 @@ export function createFlow(deps: Deps): Flow {
 			return {
 				id: r.id,
 				label: `${r.label}: ${r.value()}`,
-				speak: `${spoken} Press Enter to change it.`,
+				speak: `${spoken} Press Enter to change this setting.`,
 			}
 		})
 		specs.push({ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak })
@@ -532,9 +534,11 @@ export function createFlow(deps: Deps): Flow {
 					playCustom(players, custom)
 				} else if (id === 'delete') {
 					if (!armDelete) {
+						armedDeleteAt = Date.now()
 						holeMenu(players, holeIdx, index, true)
 						return
 					}
+					if (Date.now() - armedDeleteAt < INPUT_COOLDOWN_MS) return
 					customHoles.splice(holeIdx, 1)
 					persist()
 					tts.speak(L.holeDeleted(custom.name))
@@ -1064,6 +1068,10 @@ export function createFlow(deps: Deps): Flow {
 		// pick and only act on a second — a mis-timed select, which is the normal
 		// failure mode of scanning, must never cost the player their game.
 		let armed: 'new' | 'exit' | null = null
+		// When the arm happened. The confirm must be a separate act, not a bounce:
+		// the pointer and switch guards keep independent clocks, so a click that
+		// armed and an Enter 30 ms later slipped through both.
+		let armedAt = 0
 		const menuSpecs = (): HudItemSpec[] => {
 			const specs: HudItemSpec[] = [
 				{ id: 'resume', label: L.MENU.resume, speak: L.MENU.resumeSpeak },
@@ -1098,9 +1106,11 @@ export function createFlow(deps: Deps): Flow {
 			if (id === 'new' || id === 'exit') {
 				if (armed !== id) {
 					armed = id
+					armedAt = Date.now()
 					showMenu(index) // re-render armed; the focus handler speaks the warning
 					return
 				}
+				if (Date.now() - armedAt < INPUT_COOLDOWN_MS) return // too fast to be a decision
 			} else armed = null
 			if (id === 'resume') {
 				closeMenu()

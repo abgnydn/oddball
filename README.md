@@ -15,9 +15,10 @@ why.
 
 Every shape is a character, and some of them have disabilities. The framing
 below — a compensating ability for each one — is contested, and this layer has
-not been read by the switch-access community it is written for. That review
-happens before any submission to their library, and it decides whether the
-layer ships at all. CAST.md sets out the reasoning and its limits.
+not been read by the switch-access community it is written for. It is live in
+the hosted build anyway, so the honest statement is that it shipped unreviewed.
+That review comes before any submission to their library, and it decides whether
+the layer stays. CAST.md sets out the reasoning and its limits.
 
 - **Dot** (ball) — hears the beeper at the cup and her roll bends toward it.
   She is blind. She is the only shape with that mechanic.
@@ -44,7 +45,9 @@ CAST.md's table says which is which.
 
 - **Space** — next choice. **Enter** — pick it. **Hold Enter** — menu (it stays
   open). There is also a **Menu** row at the end of the shot list and a Pause
-  button on screen, so reaching it never depends on holding a switch down.
+  button on screen, so on any screen with a shot list, reaching the menu does not
+  depend on holding a switch down. During the flight animation there is no list,
+  so there the routes are the hold and the Pause button only.
 - Hold Space to scan backwards. **Auto Scan** (Settings) moves the highlight by
   itself, so a single switch on Enter is enough. Click/tap also works, and
   there is a hover-to-pick (dwell) mode for head- and eye-tracking users.
@@ -58,9 +61,11 @@ CAST.md's table says which is which.
 - Everything is spoken and captioned. The ball sings higher as it flies higher;
   the cup beeps faster as a rolling ball gets close. It is playable without
   looking at the screen.
-- Text scales to 200%. At that size the scan list keeps its space and the
-  caption and footer give up theirs, so the highlighted choice is always
-  fully visible.
+- Text scales to 200%. The scan list is what gets the room: the caption and
+  footer give up theirs first. On a short screen the footer legend is dropped
+  (those keys are also spoken and on the Help page) and the rows stop growing
+  with the text — 56 px tall instead of 64 — so that the highlighted row stays
+  on screen and inside its own box rather than scaling itself out of view.
 - Two six-hole courses, two-player pass-and-play, a practice range, and a
   **Make a Hole** editor (pick length, hills, water, sand, wind — par comes
   from simulating your hole, and you can save ten of them).
@@ -83,6 +88,7 @@ pnpm holes          # course playability / no-dominance harness
 pnpm editor-check   # every editor combination is playable by construction
 pnpm input-check    # switch/scan grammar self-test
 pnpm menu-check     # pause menu / confirms / Auto Scan, through the real flow
+pnpm mutate         # breaks the shipped code 13 ways; every one must go red
 pnpm build
 ```
 

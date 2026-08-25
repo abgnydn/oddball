@@ -16,6 +16,7 @@
    .footer-pause   on-screen Pause button (pointer/touch parity with Hold Enter)
    .scan-list      vertical scannable list container
    .scan-item      one big scannable row/button (min-height 64px)
+   .scan-glyph     character portrait canvas inside a rack .scan-item
    .overlay        context-menu backdrop: absolute inside .main, dimmed,
                    centers its child (never behind the caption bar or footer)
    .overlay-panel  centered panel inside .overlay (put a .scan-list in it)
@@ -271,6 +272,43 @@ body {
 	background: var(--sky);
 }
 
+.scan-panel {
+	width: clamp(min(16rem, 46vw), 34%, 30rem);
+	overflow-y: auto;
+	/* Zero, not a comfort margin: when the panel has less slack than the padding,
+	   scrollIntoView({block:'nearest'}) cannot satisfy it and leaves the row a
+	   few px outside the box. A tight fit beats a pretty one that clips. */
+	scroll-padding-block: 0;
+	padding: min(1rem, 14px);
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	background: var(--panel);
+	border-left: 3px solid var(--border);
+}
+
+/* On a phone-width screen a side-by-side split leaves the list too narrow for
+   its own labels — the rack read "Glid…", "Boin…", "Pen…" clipped at the screen
+   edge, at the shipped default text size. Stack instead: the course view keeps
+   a band at the top and the list gets the full width, which is the right
+   priority anyway, since the list is the thing the player acts on. */
+@media (max-width: 560px) {
+	.main {
+		flex-direction: column;
+	}
+
+	.canvas-wrap {
+		flex: 0 0 34% !important;
+		min-height: 0;
+	}
+
+	.scan-panel {
+		width: 100%;
+		border-left: none;
+		border-top: 3px solid var(--border);
+	}
+}
+
 .canvas-wrap canvas {
 	position: absolute;
 	inset: 0;
@@ -333,6 +371,15 @@ body {
 
 .footer-focus {
 	color: var(--text);
+	/* One line, ellipsised. A long focused-item name ("Auto scan: off — two
+	   switches") wrapped to three lines on a narrow screen and grew the footer
+	   until the Pause button went off the bottom. The row itself shows the full
+	   label, and the caption bar prints what was spoken. */
+	min-width: 0;
+	flex: 0 1 auto;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .footer-legend {
@@ -372,7 +419,7 @@ body {
 /* Very short viewports (a landscape phone, a short window) cannot afford the
    legend on a second footer line at any text size — it pushed the Pause button
    off screen at 800x360. The legend is also spoken and on the Help page. */
-@media (max-height: 430px) {
+@media (max-height: 560px) {
 	.footer-legend {
 		display: none;
 	}
@@ -385,6 +432,13 @@ body {
 
 	.header {
 		padding: 0.35rem 1rem;
+	}
+
+	/* A shorter floor: below this height the fixed chrome plus a 46dvh floor
+	   cannot both fit, and the button going off screen is worse than a smaller
+	   list. One row still fits, which is what the floor is for. */
+	.main {
+		min-height: min(34dvh, 15rem);
 	}
 }
 
@@ -500,6 +554,12 @@ body {
 
 /* ---------- context-menu overlay ---------- */
 
+.scan-glyph {
+	width: 2.75rem;
+	height: 2.75rem;
+	flex: none;
+}
+
 /* On a short viewport a settings row like "Auto scan: off — two switches" wraps
    to three or four lines at 200% and cannot fit the panel at any scroll
    position. The list is the navigation surface; the caption bar still renders
@@ -510,6 +570,13 @@ body {
 		font-size: min(1.15rem, 22px);
 		padding: min(0.9rem, 14px) min(1.2rem, 18px);
 		min-height: 56px;
+	}
+
+	/* The character portrait drives the rack row's height on its own — 88px at
+	   200% — so capping the text alone left the rows as tall as before. */
+	.scan-glyph {
+		width: min(2.75rem, 40px);
+		height: min(2.75rem, 40px);
 	}
 }
 
