@@ -115,8 +115,15 @@ export const whereAmI = (
 	return `Hole ${index + 1}, ${hole.name}. ${remaining} to the cup. You are on the ${lieWord(ball.lie)}. ${hole.windText} ${shots}`
 }
 
+/** Distance FIRST, character second. §9 warns that a focus label "is read aloud
+ *  at every scan step, and at a 1 s scan speed a long label becomes a drone",
+ *  and these run 6-10 s. Per-item labels deliberately do not hold the scan
+ *  timer, so at the default 2 s an auto-scanning player hears only the opening
+ *  — and the yardage used to be at the END, which meant the one number that
+ *  decides the shot was the one part they never reached. The blurb is flavour
+ *  and can be cut off; the distance cannot. */
 export const shapeFocus = (id: ShapeId, reachM: number): string =>
-	`${SHAPES[id].name}. ${SHAPES[id].blurb} Goes about ${yd(reachM)} yards.`
+	`${SHAPES[id].name}. Goes about ${yd(reachM)} yards. ${SHAPES[id].blurb}`
 
 export const shapeConfirm = (id: ShapeId): string => `${SHAPES[id].name}. Here comes the swing!`
 

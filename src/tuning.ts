@@ -514,6 +514,11 @@ export const DWELL_REARM_PX = 24
  *  too fast for them. Values from the hub's shared/scan-manager.js SCAN_SPEEDS. */
 export const SCAN_SPEEDS = [1000, 2000, 3000, 4000] as const
 
+/** How many holes someone can keep. Lived as a bare `>= 10` in flow.ts while
+ *  DESIGN.md said this file holds "every number" and README said "ten of them",
+ *  so three places had to agree by hand. */
+export const MAX_CUSTOM_HOLES = 10
+
 export const nextScanMs = (cur: number): number =>
 	SCAN_SPEEDS.find((ms) => ms > cur) ?? SCAN_SPEEDS[0]
 

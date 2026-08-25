@@ -7,7 +7,7 @@ Shape choice is the entire skill. The game takes no timing, aiming or reflex inp
 Target platform: web, standalone (Vite static build). Audience: switch users
 (1–2 inputs) and low vision. Text is short sentences and common words. Speech
 is the interface and a caption is read at a glance. Built to the NARBE House
-developer guide (narbehouse.github.io) constraints.
+developer guide (narbehouse.github.io/developer-guide.html) constraints.
 
 ## Input grammar
 
@@ -62,9 +62,11 @@ below lists every place that shows.
   held switch does not loop forever unnoticed. The next step focuses item 0.
   Auto Scan SKIPS it — an automatic timer stepping into a silent slot reads as the
   app having died. Neither behaviour comes from the contract: `ACCESSIBILITY.md`
-  does not specify wrap, and `shared/scan-manager.js` owns settings and the input
-  cooldown only — it has no DOM, focus or index code, so no shared module moves a
-  highlight. This is an addition, not a departure.
+  does not specify wrap, and no shared module moves a highlight to depart from —
+  `scan-manager.js` intercepts keys and owns the settings, but queries no
+  elements, manages no focus and tracks no highlight index. §11 makes the
+  related point about the hub's own modules. This is an addition, not a
+  departure.
 - Scan order is fixed top-to-bottom; never reordered mid-session.
 - Returning from a submenu restores the highlight to the item that opened it.
 - **Pointer (optional but required to work)**: click an item = select it.
@@ -93,9 +95,10 @@ modules — so some contract items are met differently:
 | §5/§10: Auto Scan and Scan Speed come from `NarbeScanManager`, so "a player configures their access once, not twenty times" | its own copies, saved under `oddball-save-v1`. Someone who set their scan speed in the hub sets it again here |
 | §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan, and the game-specific rows sit after both rather than before |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled here (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
-| §9: "large targets (**≥ 64 px** on tablet)" | 64 px is the base size, and it holds at every text scale on a tablet-shaped viewport. Two viewport rules undercut it: under 700 px of height a scan row caps at 56 px, and under 560 px of height the Pause button caps at 44 px. Both were added because the full-size controls pushed themselves or the footer off a short screen — a target you cannot reach at all is worse than one 8 px under — but 56 and 44 are below the rule |
-| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on every screen with a shot rack, via the scannable **Menu** row. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight — they can only wait it out |
+| §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three separate ways.** (1) The on-screen Pause button never reaches 64 px: it is `min-height: 2.2rem`, measured 38 px at 100 % text and 44.6 px at the shipped 125 % default, on every viewport, tall or short. It only clears 64 px at 200 %. (2) A scan row is 64 px only above 700 px of viewport height; at or under 700 px its floor drops to 56 px, which includes an iPad Mini or a 768 pt iPad in **landscape**, where browser chrome puts the viewport under 700 px. (3) At or under 400 px of height the row floor drops again to 44 px and the portrait to 30 px. Each cap exists because the full-size control pushed itself or the footer off a short screen — a target you cannot reach at all is worse than one under-sized — but they are departures, not compliance. Measured, not estimated: 60 viewport x text-scale combinations, 0 rows clipped |
+| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight — they can only wait it out |
 | §5: `tutorial-modal.js` provides the shared how-to-play modal | not used, and not reimplemented as a modal. How to play is a scannable **Help** screen in the same list grammar as everything else. A standalone build cannot call `window.BennyTutorial`, and there is no video to embed |
+| §9: a focus label must be short — "it is read aloud at every scan step, and at a 1 s scan speed a long label becomes a drone" | the shape labels run 6-10 s spoken, and per-item focus labels deliberately do NOT hold the scan timer, so at any rung below their length the tail is not heard. Mitigated, not fixed: the yardage that decides the shot now comes FIRST (~1.9 s, inside the 2 s default), and the character blurb — which can be cut off without cost — comes after. `menu-check` asserts that order and that budget. At the 1 s rung nothing useful fits, and that is not solvable by wording |
 
 Two items are met by a different route rather than skipped: the pause menu has
 both an on-screen Pause button and a scannable **Menu** row in the shot rack, so
@@ -238,26 +241,40 @@ Pars are set by measurement (harness), not by hand.
   cannot pick an item on that release, that New round, Exit and Delete are
   two-step, that the rack has a scannable Menu row, that an armed warning holds
   the scan so it cannot be cut off, and that a stalled utterance still releases
-  the scan rather than stranding a hands-free player, and that a settings row's
-  spoken explanation matches the value it is reading. Most of those were real
+  the scan rather than stranding a hands-free player, that a settings row's
+  spoken explanation matches the value it is reading, that Auto Scan wraps from
+  the last row to the first with no silent step while a deliberate press still
+  gets the deadzone beat, that a second pointer select inside the 250 ms window
+  does nothing while one after it selects normally, that BOTH gameplay lists
+  carry the Menu row, and that a shape's yardage is spoken before its blurb and
+  inside the default scan interval. Most of those were real
   defects, and they survived a green suite because no other harness imported
   `flow.ts`.
 - `pnpm mutate` — proof that the harnesses are not vacuous. It breaks the shipped
-  code one edit at a time (twelve single regressions, plus one pair applied
-  together to check that two faults do not cancel out) and requires the named
-  harness to go red for every one. Eleven are caught by `menu-check`; the
-  twelfth, dropping the switch machine's per-key bounce guard, by `input-check`.
-  The mutation list is the source of that count — do not restate it by hand.
-  Two of these mutations survived the whole suite the first time this was run,
-  which is how the missing Auto-Scan-wrap and pointer-bounce checks got written.
+  code one edit at a time and requires the named harness to go red for every one,
+  plus one pair applied together to check that two faults do not cancel out. Run
+  it for the count and the split; the mutation list is the source, and a number
+  copied into this sentence is a number that will drift. It refuses to start on a
+  dirty tree, because it writes to `src/` and restores in a `finally` — a SIGINT
+  mid-run would otherwise leave mutated code that looks like your own edits.
+  Two mutations survived the whole suite the first time it ran, which is how the
+  Auto-Scan-wrap and pointer-bounce checks came to be written. That is checkable
+  rather than asserted: delete either check from `menu-check`'s runner and
+  `mutate` reports the matching survivor and exits 1.
 
 What no harness covers, stated plainly: no harness EXECUTES `main.ts`,
 `draw.ts`, `hud.ts`, `sfx.ts` or `save.ts` — `menu-check` imports two types from
 `hud.ts` and nothing else, and a type import compiles away, so no runtime code
-from those files reaches a harness bundle. The pointer paths (click-to-select,
-click-and-hold, the Pause button, the click-swallow after a hold), hover-to-pick
-and every layout question are therefore verified only by driving a real browser
-against the built bundle. Most defects this project shipped and then had to fix
+from those files reaches a harness bundle. One pointer path is now executed
+headlessly — `menu-check` dispatches a real click into the handler `scanner.ts`
+registers, so click-to-select and its cooldown are covered. The rest are not:
+click-and-hold, the Pause button and its bounce guard, the click-swallow after
+a hold, hover-to-pick, the `aria-hidden` targets, and every layout question are
+verified only by driving a real browser against the built bundle. Two of those
+live in `hud.ts`, which no harness executes and no mutation can reach — putting
+`main.setAttribute('aria-hidden', 'true')` back would hide the pause menu from
+every screen reader, silently, with the whole suite green. That is the largest
+uncovered surface in this repo and it is where the next defect will come from. Most defects this project shipped and then had to fix
 lived in code no harness executes. One did not: the published build's
 `input-check` ran the hold-Space path and asserted the wrong contract, so a green
 harness certified the wrong behaviour. A harness is only as good as the contract
@@ -277,12 +294,24 @@ it encodes.
 - **Make a Hole**: parameter-combo editor (length/ground/water/sand/wind rows that
   cycle like settings) — every combo is playable BY CONSTRUCTION (composer clamps
   geometry; tools/editor-check.ts asserts it). Par is MEASURED by simulating the
-  composed hole; `pnpm editor-check` prints the mean and max across all 62
-  combinations on the machine it ran on (this machine: mean ~162 ms, max ~325 ms
-  over four runs). The gate is 15 s, and it is a smoke test, not a benchmark —
-  read the printed line, not this one. Up to 10 saved holes ("My Hole N").
+  composed hole. `EDITOR_OPTIONS` spans 4x3x3x3x5 = **540** combinations;
+  `pnpm editor-check` exercises a **62-combination sample** — all 32 corners
+  (every option at its min or max) plus 30 deterministic mixed picks — and
+  prints the mean and max across them on the machine it ran on (this machine:
+  mean ~162 ms, max ~325 ms over four runs). The gate is 15 s, and it is a
+  smoke test, not a benchmark — read the printed line, not this one. The
+  playability guarantee is by CONSTRUCTION, from the composer's clamps; the
+  harness spot-checks it, and 62/540 is a sample, not the space.
+  `MAX_CUSTOM_HOLES` saved holes ("My Hole N").
 - **Dwell-to-select**: hover an item for 1.2/2 s (setting) to select — head- and
-  eye-tracking users. Visible fill via the --dwell custom property.
+  eye-tracking users. Visible fill via the --dwell custom property. One
+  qualification a reader needs: after the list rebuilds, the dwell does NOT
+  restart until the pointer moves `DWELL_REARM_PX` (24 px). Without that, arming
+  a two-step confirm re-fired `pointerenter` under a still pointer and the dwell
+  timer confirmed the prompt it had just opened — a 4 s gaze destroyed a round.
+  Re-arming on ANY movement is defeated by an eye tracker's idle jitter, hence a
+  pixel threshold. The cost is real: hold perfectly still on a freshly rebuilt
+  list and nothing selects until you move.
 - **Flight sonification**: a quiet tone glides with the ball's height (setting;
   eyes-closed play). The cup beeper accelerates as a rolling ball closes in.
 
@@ -300,8 +329,9 @@ it encodes.
 - `src/types.ts` — shared contracts between modules.
 - `src/tuning.ts` — every number: shapes, courses, physics constants, editor tables.
 - `src/sim/` — deterministic physics; `tools/` — the verification harnesses
-  (`calibrate`, `holes`, `editor-check`, plus `input-check` and `menu-check` for
-  the scan grammar and the menu).
+  (`calibrate`, `holes`, `editor-check`, `input-check` and `menu-check` for the
+  scan grammar and the menu, and `mutate`, which breaks the shipped code to
+  check the others are not vacuous).
 - `src/input/` — switch grammar + scanner; `src/speech/` — TTS; `src/audio/` — sound.
 - `src/render/draw.ts` — the canvas renderer; `src/ui/` — DOM shell and styles.
 - `src/game/` — flow state machine, all player-facing text, composer, saves.

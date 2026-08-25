@@ -5,11 +5,13 @@ shape's physics is the whole strategy. There is no timing and no reflex input:
 the game is fully playable with two keys, and built for switch-access users,
 low vision, and text-to-speech.
 
-Built to the input contract in the NARBE hub's
+Built **against** the input contract in the NARBE hub's
 [ACCESSIBILITY.md](https://github.com/NARBEHOUSE/Narbehouse.github.io/blob/main/bennyshub/ACCESSIBILITY.md),
-which the [NARBE House developer guide](https://narbehouse.github.io) names as
-the authority. DESIGN.md lists where this standalone build departs from it, and
-why.
+which the [NARBE House developer guide](https://narbehouse.github.io/developer-guide.html)
+names as the authority. Against, not to: this is a standalone build that cannot
+call the hub's shared modules, and roughly half of their shipping checklist is
+unmet — including the one they say is the only test that counts. DESIGN.md lists
+every departure, with the unflattering ones first.
 
 ## The cast
 
@@ -44,10 +46,10 @@ CAST.md's table says which is which.
 ## Playing
 
 - **Space** — next choice. **Enter** — pick it. **Hold Enter** — menu (it stays
-  open). There is also a **Menu** row at the end of the shot list and a Pause
-  button on screen, so on any screen with a shot list, reaching the menu does not
-  depend on holding a switch down. During the flight animation there is no list,
-  so there the routes are the hold and the Pause button only.
+  open). There is also a **Menu** row at the end of both shot lists — a round and
+  the practice range — and a Pause button on screen, so reaching the menu never
+  depends on holding a switch down. One exception: during the flight animation
+  there is no list, so there the routes are the hold and the Pause button only.
 - Hold Space to scan backwards. **Auto Scan** (Settings) moves the highlight by
   itself, so a single switch on Enter is enough. Click/tap also works, and
   there is a hover-to-pick (dwell) mode for head- and eye-tracking users.
@@ -62,13 +64,16 @@ CAST.md's table says which is which.
   the cup beeps faster as a rolling ball gets close. It is playable without
   looking at the screen.
 - Text scales to 200%. The scan list is what gets the room: the caption and
-  footer give up theirs first. On a short screen the footer legend is dropped
-  (those keys are also spoken and on the Help page) and the rows stop growing
-  with the text — 56 px tall instead of 64 — so that the highlighted row stays
-  on screen and inside its own box rather than scaling itself out of view.
+  footer give up theirs first. Separately, on a **short or narrow viewport** —
+  which is about the window, not the text size — the rows stop growing and the
+  footer legend is dropped (those keys are also spoken and on the Help page), so
+  the highlighted row stays on screen and inside its own box instead of scaling
+  itself out of view. Measured across 60 viewport and text-size combinations,
+  from 1920x1080 down to a 320x480 phone and a 600x300 landscape window: no row
+  clipped, no sideways scrolling, the Pause button on screen everywhere.
 - Two six-hole courses, two-player pass-and-play, a practice range, and a
   **Make a Hole** editor (pick length, hills, water, sand, wind — par comes
-  from simulating your hole, and you can save ten of them).
+  from simulating your hole, and you can save ten).
 
 **Play it at [oddball.pages.dev](https://oddball.pages.dev)** — or run it
 locally with the commands below. Speech uses the browser's built-in voices
@@ -85,10 +90,11 @@ pnpm dev            # http://localhost:5184
 pnpm typecheck && pnpm lint
 pnpm calibrate      # shape-identity harness (must stay green)
 pnpm holes          # course playability / no-dominance harness
-pnpm editor-check   # every editor combination is playable by construction
+pnpm editor-check   # composer clamps make every combo playable; samples 62 of 540
 pnpm input-check    # switch/scan grammar self-test
 pnpm menu-check     # pause menu / confirms / Auto Scan, through the real flow
-pnpm mutate         # breaks the shipped code 13 ways; every one must go red
+pnpm mutate         # breaks the shipped code one edit at a time; each must go red
+                    # (this one WRITES to src/ and restores it — needs a clean tree)
 pnpm build
 ```
 

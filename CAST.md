@@ -1,9 +1,11 @@
-# The cast (Layer 1.5 — applied after the base build lands)
+# The cast (Layer 1.5)
 
 > **This layer has not been read by the switch-access community it is written
-> for.** That review happens before any submission to the NARBE library, and it
-> is the review that decides whether this layer ships at all. Read the table
-> below with that pending: "can't X, so they're great at Y" is a trope with a
+> for, and it is live in the hosted build anyway.** The honest statement is that
+> it shipped unreviewed. The review still comes before any submission to the
+> NARBE library, and it decides whether the layer stays — but "pending review"
+> would describe a gate that was not applied, and it was not. Read the table
+> below with that in mind: "can't X, so they're great at Y" is a trope with a
 > long history of being written *about* disabled people rather than *by* them,
 > and three of the four mappings here are narrative applied to physics numbers
 > that already existed — the right-hand column says which.
@@ -71,9 +73,14 @@ everything."), which is the construction this file's own rule forbids.
 - Score lines and outcome lines refer to characters by name, not by shape word.
 - Title, help screen, and 'Where am I?' stay functional and plain.
 
-## Before this ships to the NARBE library
+## Before this goes to the NARBE library
 
 This layer specifically — characters with disabilities, written for a disability
 community — gets shown to the NARBE House community (their Discord) for a read
 BEFORE any submission to their library; that step does not get skipped. They
 are the qualified reviewers of whether it lands.
+
+It should have been shown to them before it went live on the public build, and
+it was not. Putting it behind a flag until that read happens is the option that
+matches what this section says; shipping first and asking after is what actually
+occurred, and this file should not read as though it were otherwise.

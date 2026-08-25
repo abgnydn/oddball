@@ -7,6 +7,9 @@
 //
 // Run:  pnpm mutate
 
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: the MUTATIONS table
+// holds literal source lines to find and replace, not templates to evaluate
+
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -110,10 +113,30 @@ const MUTATIONS: Mutation[] = [
 		],
 	},
 	{
+		name: 'lines: the shot-deciding yardage goes back to the end of the label',
+		harness: 'menu-check',
+		edits: [
+			[
+				LN,
+				'`${SHAPES[id].name}. Goes about ${yd(reachM)} yards. ${SHAPES[id].blurb}`',
+				'`${SHAPES[id].name}. ${SHAPES[id].blurb} Goes about ${yd(reachM)} yards.`',
+			],
+		],
+	},
+	{
+		name: 'flow: no scannable Menu row in the practice range',
+		harness: 'menu-check',
+		edits: [
+			[
+				FL,
+				"\t\t\t// The range is gameplay, so §12's scannable pause applies here too.\n\t\t\t// It was in the round rack only, which made the \"no screen needs a\n\t\t\t// hold\" claim false for everyone who cannot sustain one — in the mode\n\t\t\t// most likely to be someone's FIRST screen.\n\t\t\t{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeak },\n",
+				'',
+			],
+		],
+	},
+	{
 		name: 'lines: Auto scan off reads the on explanation',
 		harness: 'menu-check',
-		// biome-ignore-start lint/suspicious/noTemplateCurlyInString: these are the
-		// literal source lines being searched for and replaced, not templates
 		edits: [
 			[
 				LN,
@@ -121,15 +144,26 @@ const MUTATIONS: Mutation[] = [
 				'\t\t`Auto scan ${v}. The light moves by itself. Enter picks it.`,',
 			],
 		],
-		// biome-ignore-end lint/suspicious/noTemplateCurlyInString: end of the literals
 	},
 ]
 
 // Two faults at once must not cancel out into a green run.
+// By NAME, not by index: this was `MUTATIONS[3]` and `MUTATIONS[5]`, so
+// inserting a mutation above silently re-pointed the pair while it kept the
+// name of the one it used to be.
+const byName = (name: string): Mutation['edits'] => {
+	const m = MUTATIONS.find((x) => x.name === name)
+	if (m === undefined) throw new Error(`no mutation named ${JSON.stringify(name)}`)
+	return m.edits
+}
+
 MUTATIONS.push({
 	name: 'PAIR: both Auto Scan stepping faults together',
 	harness: 'menu-check',
-	edits: [...(MUTATIONS[3]?.edits ?? []), ...(MUTATIONS[5]?.edits ?? [])],
+	edits: [
+		...byName('scanner: Auto Scan steps into the wrap deadzone'),
+		...byName('scanner: Auto Scan ignores the narration hold'),
+	],
 })
 
 const run = (harness: string): { code: number; out: string } => {
@@ -159,6 +193,31 @@ const apply = (edits: Mutation['edits']): Map<string, string> => {
 
 const restore = (saved: Map<string, string>): void => {
 	for (const [k, v] of saved) writeFileSync(k, v)
+}
+
+// This tool WRITES to src/. It restores in a finally, but a SIGINT between the
+// write and the restore leaves the tree mutated, and a mutated tree that looks
+// like your own work is a genuinely bad afternoon. Refuse to start on a dirty
+// tree so that `git checkout .` is always the correct recovery.
+try {
+	const dirty = execFileSync('git', ['status', '--porcelain'], {
+		cwd: REPO,
+		encoding: 'utf8',
+	}).trim()
+	if (dirty !== '') {
+		console.error(
+			'refusing to run: this tool edits src/ in place, and the tree already has\n' +
+				'uncommitted changes, so a crash mid-run would be unrecoverable.\n' +
+				'Commit or stash first. Dirty paths:\n' +
+				dirty,
+		)
+		process.exit(1)
+	}
+} catch (err) {
+	const e = err as { status?: number }
+	if (e.status !== undefined) throw err // git ran and said no
+	console.error('refusing to run: could not ask git whether the tree is clean')
+	process.exit(1)
 }
 
 const HARNESSES = [...new Set(MUTATIONS.map((m) => m.harness))]

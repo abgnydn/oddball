@@ -12,6 +12,7 @@ import {
 	DWELL_MS,
 	EDITOR_OPTIONS,
 	INPUT_COOLDOWN_MS,
+	MAX_CUSTOM_HOLES,
 	MAX_STROKES,
 	nextScanMs,
 	RANGE,
@@ -610,7 +611,7 @@ export function createFlow(deps: Deps): Flow {
 					return
 				}
 				if (id === 'save') {
-					if (customHoles.length >= 10) {
+					if (customHoles.length >= MAX_CUSTOM_HOLES) {
 						tts.speak(L.BOOK_FULL)
 						return
 					}
@@ -645,6 +646,11 @@ export function createFlow(deps: Deps): Flow {
 				speak: L.shapeFocus(id, reach(id)),
 				glyph: id,
 			})),
+			// The range is gameplay, so §12's scannable pause applies here too.
+			// It was in the round rack only, which made the "no screen needs a
+			// hold" claim false for everyone who cannot sustain one — in the mode
+			// most likely to be someone's FIRST screen.
+			{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeak },
 		]
 		const opts: { announce?: string; startIndex?: number; rebuild?: (i: number) => void } = {
 			startIndex,
@@ -657,6 +663,10 @@ export function createFlow(deps: Deps): Flow {
 			(id) => {
 				if (id === 'back') {
 					title()
+					return
+				}
+				if (id === 'menu') {
+					openMenu()
 					return
 				}
 				rangeStrike(id as ShapeId)

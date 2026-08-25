@@ -17,7 +17,7 @@ import { createScanner } from '../src/input/scanner'
 import { createSwitchMachine } from '../src/input/switch'
 import { createSim } from '../src/sim/physics'
 import { createTTS } from '../src/speech/tts'
-import { INPUT_COOLDOWN_MS, SHAPE_ORDER } from '../src/tuning'
+import { DEFAULT_SETTINGS, INPUT_COOLDOWN_MS, SHAPE_ORDER, SHAPES } from '../src/tuning'
 import type { CustomHole, Renderer, SaveAPI, SaveData, ScanItem, Settings, SFX } from '../src/types'
 import type { Hud, HudItemSpec } from '../src/ui/hud'
 
@@ -345,6 +345,26 @@ const scannableMenuChecks = () => {
 		t.pickList('menu')
 		check('picking it opens the menu without any hold', t.hud.overlayOpen())
 	} else check('picking it opens the menu without any hold', false, 'no Menu row to pick')
+
+	// The practice range is gameplay too, and it had no Menu row — the round
+	// rack was the only list that did, so the check above passed while a
+	// hold-free player had no pause in the mode most likely to be their first.
+	// Checking one screen and generalising to "every screen" is what let that
+	// sit; this asserts every gameplay list by name.
+	const r = makeHarness({ ...BASE_SETTINGS })
+	r.flow.start()
+	r.pickList('practice')
+	check(
+		'the practice range has a scannable Menu row',
+		r.listIds().includes('menu'),
+		`range = [${r.listIds().join()}]`,
+	)
+	if (r.listIds().includes('menu')) {
+		r.pickList('menu')
+		check('picking it in the range opens the menu without any hold', r.hud.overlayOpen())
+	} else {
+		check('picking it in the range opens the menu without any hold', false, 'no Menu row')
+	}
 }
 
 // ---------- 3c. deleting a hole someone built is two-step ----------
@@ -657,6 +677,38 @@ const pointerBounceChecks = async () => {
 	sc.clear()
 }
 
+// ---------- 4d. the shot-deciding number is heard before the scan moves on ----------
+
+// §9: a focus label "is read aloud at every scan step, and at a 1 s scan speed
+// a long label becomes a drone". These labels run 6-10 s and do NOT hold the
+// scan timer, so whatever comes after the first couple of seconds is not heard
+// by an auto-scanning player. The yardage decides the shot, so it has to be in
+// that window; the character blurb does not and can be cut off.
+const focusOrderChecks = () => {
+	const WPM = 160 // conservative default rate for a system voice
+	// Budgeted against the DEFAULT rung, not the fastest. At the 1 s rung
+	// nothing useful fits — a name and a distance is ~1.9 s — and §9 says so
+	// itself ("at a 1 s scan speed a long label becomes a drone"). Asserting
+	// the impossible would just get the assertion weakened later. DESIGN.md
+	// discloses the 1 s case in the departures table instead.
+	const budgetWords = (DEFAULT_SETTINGS.scanMs / 1000 / 60) * WPM
+	for (const id of SHAPE_ORDER) {
+		const line = L.shapeFocus(id, 150)
+		const end = line.indexOf('yards.')
+		check(
+			`${id}: the yardage is spoken before the blurb`,
+			end !== -1 && end < line.indexOf(SHAPES[id].blurb),
+			line,
+		)
+		const words = line.slice(0, end + 6).split(/\s+/).length
+		check(
+			`${id}: the yardage fits the default scan rung`,
+			words <= budgetWords,
+			`${words} words vs ~${budgetWords.toFixed(1)} at ${DEFAULT_SETTINGS.scanMs}ms/${WPM}wpm`,
+		)
+	}
+}
+
 const main = async () => {
 	await latchChecks()
 	await slowPickInsideMenuChecks()
@@ -671,6 +723,7 @@ const main = async () => {
 	await ttsHoldChecks()
 	await watchdogChecks()
 	settingsSpeechChecks()
+	focusOrderChecks()
 
 	for (const [name, ok, detail] of results) {
 		console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok || !detail ? '' : ` — ${detail}`}`)

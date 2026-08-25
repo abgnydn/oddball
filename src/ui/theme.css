@@ -7,7 +7,11 @@
    .header-title   game title inside .header
    .header-screen  current screen name inside .header
    .main           middle area; canvas parent (position:relative, flex:1)
+   .canvas-wrap    the course view's wrapper; also the aria-hidden target while
+                   the pause menu is open (NOT .main — the overlay is inside it)
    .canvas-wrap canvas  the course view; absolutely fills its wrapper
+   .scan-panel     the scan list's column; width/padding/scroll live here, not
+                   in an inline style, so media queries can reach them
    .caption-bar    VERY large always-visible caption mirroring speech
    .footer         bottom bar: mode, focused item, legend
    .footer-mode    current mode text inside .footer
@@ -15,7 +19,9 @@
    .footer-legend  "Space = next · Hold Space = back · Enter = pick · Hold Enter = menu"
    .footer-pause   on-screen Pause button (pointer/touch parity with Hold Enter)
    .scan-list      vertical scannable list container
-   .scan-item      one big scannable row/button (min-height 64px)
+   .scan-item      one big scannable row/button (min-height 64px, dropping to
+                   56px at or under 700px of viewport height or 560px of width,
+                   and 44px at or under 400px of height — see the notes there)
    .scan-glyph     character portrait canvas inside a rack .scan-item
    .overlay        context-menu backdrop: absolute inside .main, dimmed,
                    centers its child (never behind the caption bar or footer)
@@ -424,11 +430,17 @@ body {
 		display: none;
 	}
 
-	/* 44px is still a WCAG-AAA touch target; the 2.2rem default is 70px at 200%
-	   and pushed the button itself off screen. */
-	.footer-pause {
-		min-height: 44px;
+	/* One line only. The footer wraps by default so a long focused-item name
+	   can take the width it needs; on a short viewport that wrap put the Pause
+	   button on a second row and 31px of it below the fold, unreachable because
+	   body is overflow:hidden. The name ellipsises instead — it is also in the
+	   caption bar and on the row itself. */
+	.footer {
+		flex-wrap: nowrap;
 	}
+
+	/* The .footer-pause cap lives AFTER the base rule, below — see the note
+	   there. Putting it here looked right and did nothing. */
 
 	.header {
 		padding: 0.35rem 1rem;
@@ -459,6 +471,22 @@ body {
 	padding: 0.3rem 0.9rem;
 	min-height: 2.2rem;
 	cursor: pointer;
+}
+
+/* Placed AFTER .footer-pause, not inside the short-viewport block above:
+   equal specificity means document order decides, and a media query does not
+   change document order. Sitting earlier in the file, this rule lost to the
+   2.2rem base and never applied — the button measured 70.4px at 200% on a
+   560px-tall viewport, which is what it was written to prevent. Padding and
+   font are capped too, because min-height is a floor: it cannot shrink a
+   button that its own content has already made taller. 44px is still a
+   WCAG-AAA touch target. */
+@media (max-height: 560px) {
+	.footer-pause {
+		min-height: 44px;
+		padding: 0.2rem 0.7rem;
+		font-size: min(1rem, 17px);
+	}
 }
 
 .footer-pause:hover,
@@ -560,7 +588,14 @@ body {
 	flex: none;
 }
 
-/* On a short viewport a settings row like "Auto scan: off — two switches" wraps
+/* A row taller than the panel's visible area cannot be read at ANY scroll
+   position, so these caps are correctness, not polish. Two conditions produce
+   it, and each needs its own query: a SHORT viewport (the panel gets little
+   height) and a NARROW one (the label wraps to more lines). The width case was
+   missed at first because 390x844 is tall enough to escape the height query,
+   and a 245px row in a 228px panel is just as unreadable as a 126px one.
+
+   On a short viewport a settings row like "Auto scan: off — two switches" wraps
    to three or four lines at 200% and cannot fit the panel at any scroll
    position. The list is the navigation surface; the caption bar still renders
    the same words in very large print, so nothing becomes unreadable. Placed
@@ -574,6 +609,46 @@ body {
 
 	/* The character portrait drives the rack row's height on its own — 88px at
 	   200% — so capping the text alone left the rows as tall as before. */
+	.scan-glyph {
+		width: min(2.75rem, 40px);
+		height: min(2.75rem, 40px);
+	}
+}
+
+/* Below this the 700px caps are still not enough: a landscape phone (667x325,
+   812x325, 844x325) and a 640x300 window leave the panel ~82px of inner height
+   while a two-line row at the 22px cap measures 95.6px, so the row overflows
+   even at the shipped 125% default — not only at 200%. The floor below is
+   supposed to guarantee "one row still fits" and did not. Cutting the type and
+   the padding again is what makes the guarantee true; the caption bar still
+   prints the same words in very large print. */
+@media (max-height: 400px) {
+	.scan-item {
+		font-size: min(1rem, 17px);
+		padding: min(0.5rem, 8px) min(1.2rem, 18px);
+		min-height: 44px;
+	}
+
+	.scan-glyph {
+		width: min(2rem, 30px);
+		height: min(2rem, 30px);
+	}
+
+	.scan-panel {
+		padding: min(0.5rem, 8px);
+	}
+}
+
+/* The narrow half of the same problem: the list is full-width here (it stacks),
+   but 390px of it at 200% still wraps a settings value onto six lines. Same cap
+   as the short-viewport rule; the caption bar keeps printing the words large. */
+@media (max-width: 560px) {
+	.scan-item {
+		font-size: min(1.15rem, 22px);
+		padding: min(0.9rem, 14px) min(1.2rem, 18px);
+		min-height: 56px;
+	}
+
 	.scan-glyph {
 		width: min(2.75rem, 40px);
 		height: min(2.75rem, 40px);
