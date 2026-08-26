@@ -270,7 +270,10 @@ MUTATIONS.push(
 		// reviewer has had to diff these by hand.
 		name: 'CAST.md: a reprinted blurb drifts from tuning.ts',
 		harness: 'menu-check',
-		edits: [[CAST, 'Brick lands, and he stays.', 'Brick lands and stays.']],
+		// Anchored on the LIST entry, not the bare sentence: the narrator-rules
+		// bullet quotes the same blurb, and String.replace takes the first hit.
+		// The preflight caught this the moment the second copy appeared.
+		edits: [[CAST, '- Brick: "Brick lands, and he stays.', '- Brick: "Brick lands and stays.']],
 	},
 	{
 		// The §10 tally, stated in prose beside the table it summarises. It has
