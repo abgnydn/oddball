@@ -66,9 +66,13 @@ below lists every place that shows.
   app having died. Neither behaviour comes from the contract: `ACCESSIBILITY.md`
   does not specify wrap, and no shared module moves a highlight to depart from —
   `scan-manager.js` intercepts keys and owns the settings, but queries no
-  elements, manages no focus and tracks no highlight index. §4 says so
-  directly — `NarbeScanManager` "owns two values and no others", the scan
-  interval and the 250 ms debounce. This is an addition, not a departure.
+  elements, manages no focus and tracks no highlight index. §4 gives the first
+  half — `NarbeScanManager` "owns two values and no others", the scan interval
+  and the 250 ms debounce — but that section is scoped to numbers and does not
+  speak to focus or the DOM. The rest is from the file itself
+  (`bennyshub/shared/scan-manager.js`): it installs capturing key and pointer
+  listeners and contains no element query, no focus call and no highlight index.
+  This is an addition, not a departure.
 - Scan order is fixed top-to-bottom; never reordered mid-session.
 - Returning from a submenu restores the highlight to the item that opened it.
 - **Pointer (optional but required to work)**: click an item = select it.
@@ -84,7 +88,7 @@ modules — so some contract items are met differently:
 
 | `ACCESSIBILITY.md` says | This build |
 | --- | --- |
-| §1: the player "is not a child, and should not be talked to like one" — "the access is what is adapted, not the dignity" | the cast layer (CAST.md) writes the shapes as characters with feelings: "Brick is very pleased", "Boing bounces with joy". Whether that reads as warmth or as talking down is a call this build is not entitled to make for a player it has never met, so it is now a **setting, off by default**. The shipped reading states what a shape does and stops: "Cube. Goes about 93 yards. It lands and it stays." Turning the cast on is the player's choice. The setting does not settle the question — it just stops the game answering it for them |
+| §1: the player "is not a child, and should not be talked to like one" — "the access is what is adapted, not the dignity" | the cast layer (CAST.md) writes the shapes as characters with feelings: "Brick is very pleased", "Boing bounces with joy". Whether that reads as warmth or as talking down is a call this build is not entitled to make for a player it has never met, so it is now a **setting, off by default**. The shipped reading names the shape for what it is and describes what it does: "Cube. Goes about 93 yards. It lands and it stays. Wind moves it less than any other shape." Turning the cast on is the player's choice. The setting does not settle the question — it just stops the game answering it for them |
 | §1: give the player "a way to choose how hard the game pushes back", and a no-fail mode is "*the* version" for some players | no difficulty setting. Golf has no fail state (eight strokes and the ball rests), and the practice range is unscored and endless — but neither is a difficulty the player chose. Not done |
 | §4: `scan-manager.js` enforces a 250 ms global cooldown — "You do not need to write your own debounce, and you should not" | its own 250 ms cooldown: per key for switch presses, and a separate one on pointer selects (click and dwell). There is no `NarbeScanManager` to defer to |
 | §4: the convention is ~3 s to scan backwards and ~5 s to pause, "and new games should match it" | 3 s for both. The backward hold matches; the menu hold does not |
@@ -92,17 +96,45 @@ modules — so some contract items are met differently:
 | §4: the pause hold should be "discoverable while it happens" — a filling ring and a rising beep | no progress indication during the hold yet. The scannable Menu row below mitigates this. It does not replace the indication |
 | §10: "Played start to finish with one switch, by someone who is not you" | **not done.** The one-switch path is verified by harness and by hand, never by a switch user |
 | §5/§10: read TTS state from `NarbeVoiceManager`, "never keep your own copy" | raw `speechSynthesis`, with its own on/off, rate and volume settings |
-| §7: Settings has a **Voice** row that cycles available voices | no voice picker, and no row named Voice. The on/off row is "Text to speech" (§7 writes it "Text to Speech"); the rate and volume rows are "Speech speed" and "Speech volume", so §7's reserved word is not reused |
+| §7: Settings has a **Voice** row that cycles available voices | no voice picker, and no row named Voice. The on/off row is "Text to speech"; the rate and volume rows are "Speech speed" and "Speech volume", so §7's reserved word (Voice) is not reused |
 | §7/§10: Settings reachable from the pause menu | reachable from the pause menu everywhere except during the flight animation, where the item is hidden |
 | §7/§10: a two-step **Reset Progress** item | none. Saved holes delete individually (two-step); there is no wipe-everything item |
 | §6/§10: `postMessage({ action: 'focusBackButton' })` on Exit Game | not sent. This build has no Exit Game — "Exit to menu" returns to its own title, still inside the frame. It would need one to go in the hub |
 | §5/§10: Auto Scan and Scan Speed come from `NarbeScanManager`, so "a player configures their access once, not twenty times" | its own copies, saved under `oddball-save-v1`. Someone who set their scan speed in the hub sets it again here |
 | §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan. Most game-specific rows sit after both rather than before; one — Character names — sits with the speech rows instead, because it changes what speech says and nothing else |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled here (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
-| §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three ways. Every number here is measured off the built bundle in a real browser, not read off the stylesheet.** (1) The on-screen Pause button is `min-height: 2.2rem`, so it tracks the text setting: 38 px at 100 %, 44.6 px at the shipped 125 % default, 52.8 / 61.6 / 70.4 px at 150 / 175 / 200 %. It first clears 64 px at 200 %. (2) On a viewport 560 px or shorter the Pause button is a flat **44 px at every text scale**, so on a landscape phone it never reaches 64 px at all. (3) A scan row's 64 px floor survives only above 700 px of height **and** above 560 px of width — either a short screen or a narrow one drops it to 56 px, and 400 px of height or 360 px of width drops it again to 44 px. A 320x400 or 280x560 screen renders every row at 44.4 px whatever the text scale. Where the caps do not bite the rows are comfortably over: 65 px at 100 % text and 124 px at 200 % on 1024x900. Each cap exists because the full-size control pushed itself or the footer off a short screen, and a target you cannot reach at all is worse than an under-sized one — but they are departures, not compliance. `pnpm layout-check` sweeps 26 viewports x 4 text scales x 3 screens: no clipped row, no unreachable Pause, no sideways scroll |
+| §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three ways.** Two numbers exist for every control and they are not the same: the `min-height` floor in the stylesheet, and the height the browser actually renders once padding, borders and line-height are added. The floors below are read from `theme.css`; the rendered heights are measured in a real browser. (1) The on-screen Pause button's floor is `min-height: 2.2rem`, so it tracks the text setting — rendered 38 px at 100 %, 44.6 px at the shipped 125 % default, then 52.8 / 61.6 / 70.4 px at 150 / 175 / 200 %. It first clears 64 px at 200 %. (2) On a viewport 560 px or shorter that floor becomes a flat 44 px, and there the button renders at exactly 44 px at **every** text scale — on a landscape phone it never reaches 64 px at all. (3) A scan row's 64 px floor survives only above 700 px of height **and** above 560 px of width. A short screen or a narrow one drops it to 56 px; 400 px of height or 360 px of width drops it to 44 px, and a 320x400 or 280x560 screen renders every row at 44.4 px whatever the text scale. Where no cap bites, rows are comfortably over: 65 px at 100 % and 124 px at 200 % on 1024x900. Each cap exists because the full-size control pushed itself or the footer off a short screen, and a target you cannot reach at all is worse than an undersized one — but they are departures, not compliance. `pnpm layout-check` measures all of it on every build |
 | §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight — they can only wait it out |
 | §5: `tutorial-modal.js` provides the shared how-to-play modal | not used, and not reimplemented as a modal. How to play is a scannable **Help** screen in the same list grammar as everything else. A standalone build cannot call `window.BennyTutorial`, and there is no video to embed |
 | §9: a focus label must be short — "it is read aloud at every scan step, and at a 1 s scan speed a long label becomes a drone" | the shape labels run 6-10 s spoken, and per-item focus labels deliberately do NOT hold the scan timer, so at any rung below their length the tail is not heard. Mitigated, not fixed: the yardage that decides the shot now comes FIRST (~1.9 s, inside the 2 s default), and the character blurb — which can be cut off without cost — comes after. `menu-check` asserts that order and that budget. At the 1 s rung nothing useful fits, and that is not solvable by wording |
+
+### §10, the shipping checklist, item by item
+
+This is the list the README's summary points at; it used to say "roughly half
+unmet" with nothing behind it. §10 has 18 items. Counting the table below:
+**8 met, 4 met by a different route, 6 not met.** Anyone quoting a ratio should
+count the rows rather than trust this sentence.
+
+| §10 item | This build |
+| --- | --- |
+| Every action reachable with **Space and Enter only** | met (`input-check`, `menu-check`) |
+| Every action reachable with **Enter alone**, Auto Scan on | met by harness. Never by a switch user — see the last row |
+| Menu actions fire on **release**, not press | met (`switch.ts` emits on keyup; `input-check` asserts it) |
+| Holding Space scans backwards, repeating at the player's scan speed from `NarbeScanManager` | **different route.** The behaviour matches; the speed comes from this build's own saved setting, because there is no `NarbeScanManager` to read |
+| Holding Enter opens pause from anywhere in gameplay, with a visible and audible indication while holding | **not met.** The hold works everywhere including flight, but nothing indicates progress during it. §4 asks for the same thing and the row above says so |
+| An on-screen Pause button does the same | met |
+| Settings reachable from **both** the main menu and the pause menu | **different route.** Both, except during the flight animation, where the item is hidden |
+| Auto Scan and Scan Speed present, reading from `NarbeScanManager` | **different route.** Present, from this build's own copies |
+| TTS reads focus, selection and outcomes, via `NarbeVoiceManager` | **different route.** All three are read; the engine is raw `speechSynthesis` |
+| Sound through `SafeAudio` — no `AudioContext` | **not met.** WebAudio, for the flight tone and the cup beeper |
+| Reset Progress is two-step | **not met.** There is no Reset Progress item at all. Saved holes delete individually, two-step |
+| Exit Game sends `postMessage({ action: 'focusBackButton' })` | **not met.** This build has no Exit Game — "Exit to menu" returns to its own title |
+| Mouse and touch work everywhere, no interaction requires a drag | met |
+| Anything mouse-only or off-site sits behind a spoken confirm dialog | met, vacuously: nothing here is mouse-only and nothing leaves the page. The editor is fully scannable, which is what §7's one-way-door warning is for |
+| Progress saves and resumes | met (`oddball-save-v1`; Continue on the title screen) |
+| Readable at 100 % on a tablet | met (`layout-check`) |
+| Added to `apps/games/games.json` with a thumbnail and genres | **not met.** Not submitted. That waits on the CAST.md review |
+| **Played start to finish with one switch, by someone who is not you** | **not met.** §10 calls this "the only test that actually counts" |
 
 Two items are met by a different route rather than skipped: the pause menu has
 both an on-screen Pause button and a scannable **Menu** row on both gameplay
@@ -130,11 +162,22 @@ Making it a setting instead is not done.
 - Settings: TTS on/off, rate, volume, and **Character names** — the cast layer
   (CAST.md), off by default. With it off, `shapeFocus`, `shapeConfirm` and the
   narration use each shape's plain name and plain blurb, the hole-out line ends
-  at "In the cup!", and the star's "Boing!" bounce line falls back to the
+  at "In the cup!", the Help page's shapes entry is titled "The shapes" instead
+  of "Meet the team", and the star's "Boing!" bounce line falls back to the
   neutral wording every other shape already used. Every spoken line that names a
-  shape routes through `shapeName()`, so the two modes cannot half-apply — a
-  plain blurb under a character name would read as a bug, not a style, and
-  `menu-check` asserts that it never happens. Old saves get `false` for free:
+  shape routes through `shapeName()`/`shapeBlurb()`.
+  That last sentence was false when it was first written, which is the whole
+  reason it is checked now rather than asserted. Two readers were ungated: the
+  practice range's narration, so a player who picked a row labelled "Cube" heard
+  "Brick went 82 yards!" in the mode most likely to be their first screen; and
+  the Help page's "Meet the team", a module-level const evaluated at import,
+  which could not consult the setting even in principle and read out "Brick is
+  deaf" and "Glide does not walk" to a player who had the layer off. Behavioural
+  checks did not catch either, because a behavioural check can only test the
+  call sites its author remembered. `menu-check` now also greps `src/` for any
+  read of a shape's `.name` or `.blurb` outside those two accessors, and fails
+  on a new one. That check has its own non-vacuity assertion, because an
+  allowlist that stops matching is a check that always passes. Old saves get `false` for free:
   `mergeSettings` starts from `DEFAULT_SETTINGS` and only takes keys the saved
   object actually has.
 - All text lives in `src/game/lines.ts`: short sentences, common words, numbers in
@@ -161,6 +204,23 @@ Making it a setting instead is not done.
   and an on-screen **Pause** button (pointer/touch parity with holding Enter).
   The button is not in the scan order; the scannable route is the Menu row at
   the end of each gameplay list (the shot rack and the practice range).
+- The scan list and the course view sit side by side, until they cannot. Below
+  560 px of width the layout stacks and the list takes the full width; it also
+  stacks at large print on a mid-width window, because the side-by-side panel is
+  sized `clamp(min(16rem, 46vw), 34%, 30rem)` and `46vw` ignores the text
+  setting entirely — on a 600 px window at 200 % the longest label needs 307 px
+  and gets 276. The stack breakpoints (900 px at 150 %+ and 640 px at 125 %) are
+  the measured edge of that defect plus margin, swept at 25 px steps; they are
+  enforced by `layout-check`, so a wrong one fails the harness rather than
+  shipping.
+- The highlight ring's reach outside the row — outline width plus offset — is
+  defined once as `--hl-reach` and consumed by the scroll padding that keeps it
+  on screen. It was three hard-coded numbers that had drifted apart. On screens
+  under 400 px tall or 360 px wide the offset drops to 0, and the **thick**
+  setting is served the medium width: a 12 px ring cannot be drawn whole on a
+  320x320 panel at 200 % text, and a thick ring with a missing edge is not a
+  thicker ring. That overrides a player's explicit setting, which is a real
+  cost; it buys the thickest ring that closes.
 - Big shapes, thick trajectory line, no clutter. Reduce-motion setting: flight is
   summarized (ball drawn at end position, events spoken) instead of animated.
 
@@ -240,7 +300,8 @@ Pars are set by measurement (harness), not by hand.
   strategy on course total; each shape appears in some hole's best line; measured
   pars match tuning pars.
 - Layout is a correctness question here, not a cosmetic one: a highlight drawn
-  outside its panel is a switch user with no idea what they are about to pick.
+  outside its panel leaves a switch user unable to see what they are about to
+  pick.
   The order of yielding is fixed and deliberate — the caption bar shrinks first
   (its text is spoken and it scrolls), then the footer legend disappears, then
   the header, footer and list type sizes stop scaling. `.main` keeps a floor
@@ -250,21 +311,36 @@ Pars are set by measurement (harness), not by hand.
   None of this is visible to a harness that imports modules, so it gets one
   that drives the built bundle in a real browser: `pnpm layout-check`.
 - `pnpm layout-check` — serves `dist/` and drives the real bundle in headless
-  Chromium across 26 viewports x 4 text scales x 3 screens (title, settings, and
-  the practice range, which carries the longest labels in the game). For every
+  Chromium across every text scale, a viewport list that runs from 1920x1080
+  down to 280x480, and three screens (title; settings, which has the most rows;
+  and the practice range, which carries the longest labels in the game). It
+  prints its own cell count — do not copy one into this sentence. For every
   row on every screen it scrolls the row into view and measures it against the
   panel's **scrollport** — the padding box, not the content box; measuring the
   content box under-reports the visible area and flags a clean layout as clipped,
   which is what the first version of this harness did on 199 of 208 cells. It
-  also checks the Pause button is inside the viewport and the document does not
+  also measures the **highlight ring** as its own thing — it is drawn outside
+  the row's border box, so a row fully on screen can still have its ring cut off
+  by the scrollport, which shipped: 12.4 px of the bottom stroke gone on the
+  last settings row, on every viewport, while every row measured as unclipped.
+  It checks the Pause button is inside the viewport and the document does not
   scroll sideways. Before the sweep it runs a self-test that forces a 4000 px
-  row, a 4000 px-wide row and a Pause button translated 9000 px down, and exits
-  non-zero if any detector fails to fire: a detector that cannot fail proves
-  nothing about a build that passes. The grid is not a general sample — it
-  enumerates the corner where narrow and short match at once, because two
-  independently designed grids both missed exactly that region, and it measures
+  row, a 4000 px-wide row, a 400 px ring on an unclipped row, and a Pause button
+  translated 9000 px down, and exits non-zero if any of the four detectors fails
+  to fire: a detector that never fires cannot tell a clean build from a broken
+  one. The grid is not a general sample — it enumerates BOTH corners where the
+  tiers overlap: narrow-and-short, and mid-width-and-tall. The second was added
+  after the first grid missed it entirely; every wide cell in it was ≥ 900 px
+  and every short cell ≤ 400 px tall, so no cell existed where a tablet in
+  portrait lives, and a rendering review found the longest label painting 132 px
+  outside its row while this harness reported ALL PASS. Two focused passes
+  follow the grid, for the two settings that change layout without changing
+  size: the thick highlight ring on the tightest viewports, and the character
+  names on the mid-width band. The thick-ring pass failed on its first run. It measures
   at 200 % rather than 125 % because at 125 % a defective and a fixed Pause
   button are both exactly 44 px.
+- `pnpm editor-check` — asserts the hole composer's clamps make every parameter
+  combination playable, on a 62-of-540 sample. Described in full under **Modes**.
 - `pnpm input-check` — headless self-test of the switch/scan grammar state machines.
 - `pnpm menu-check` — drives the REAL switch machine, scanner and flow through the
   context menu: that the menu latches after the hold that opened it, that Auto Scan
@@ -278,9 +354,11 @@ Pars are set by measurement (harness), not by hand.
   does nothing while one after it selects normally, that BOTH gameplay lists
   carry the Menu row, that a shape's yardage is spoken before its blurb and
   inside the default scan interval **in both cast modes**, that a course's best
-  score is spoken before its blurb, and that the cast layer is all-or-nothing —
-  a plain reading carries no character name, no character blurb, no character
-  pronoun and no character line at the cup. Most of those were real
+  score is spoken before its blurb, and that the cast layer is all-or-nothing:
+  a plain reading carries no character name, blurb, pronoun or cup line, on the
+  shot rack, the practice range and the Help page alike — plus the source-level
+  check above, which is the only one of these that does not depend on someone
+  remembering a call site. Most of those were real
   defects, and they survived a green suite because no other harness imported
   `flow.ts`.
 - `pnpm mutate` — proof that the harnesses are not vacuous. It breaks the shipped
@@ -295,23 +373,36 @@ Pars are set by measurement (harness), not by hand.
   rather than asserted: delete either check from `menu-check`'s runner and
   `mutate` reports the matching survivor and exits 1.
 
-What no harness covers, stated plainly: no harness EXECUTES `main.ts`,
-`draw.ts`, `hud.ts`, `sfx.ts` or `save.ts` — `menu-check` imports two types from
-`hud.ts` and nothing else, and a type import compiles away, so no runtime code
-from those files reaches a harness bundle. One pointer path is now executed
-headlessly — `menu-check` dispatches a real click into the handler `scanner.ts`
-registers, so click-to-select and its cooldown are covered. The rest are not:
-click-and-hold, the Pause button and its bounce guard, the click-swallow after
-a hold, hover-to-pick, the `aria-hidden` targets, and every layout question are
-verified only by driving a real browser against the built bundle. Two of those
-live in `hud.ts`, which no harness executes and no mutation can reach — putting
-`main.setAttribute('aria-hidden', 'true')` back would hide the pause menu from
-every screen reader, silently, with the whole suite green. That is the largest
-uncovered surface in this repo and it is where the next defect will come from. Most defects this project shipped and then had to fix
-lived in code no harness executes. One did not: the published build's
-`input-check` ran the hold-Space path and asserted the wrong contract, so a green
-harness certified the wrong behaviour. A harness is only as good as the contract
-it encodes.
+What no harness covers, stated plainly. Two kinds of coverage are in play, and
+conflating them is how this paragraph came to be wrong:
+
+- **No harness IMPORTS `main.ts`, `draw.ts`, `hud.ts`, `sfx.ts` or `save.ts`.**
+  `menu-check` imports two types from `hud.ts` and nothing else, and a type
+  import compiles away, so no runtime code from those files reaches a harness
+  bundle. `mutate` cannot reach them either: every anchor in its list sits in
+  `switch.ts`, `scanner.ts`, `flow.ts`, `tts.ts` or `lines.ts`.
+- **`layout-check` RUNS all of them**, because it loads the built bundle in a
+  browser. `main.ts` is the entry, `hud.ts` builds the footer and the rows,
+  `draw.ts` paints the glyphs, and it writes `oddball-save-v1`, which only
+  `save.ts` reads. But it observes layout and nothing else. A logic defect in
+  any of those files passes straight through it.
+
+So the uncovered surface is not those files, it is the behaviour in them that is
+neither layout nor imported: click-and-hold, the Pause button's bounce guard,
+the click-swallow after a hold, hover-to-pick, and the `aria-hidden` targets.
+The last is the sharpest: putting `main.setAttribute('aria-hidden', 'true')`
+back would hide the pause menu from every screen reader, silently, with the
+whole suite green, and no mutation can reach it to prove otherwise.
+
+Most defects this project shipped and then had to fix lived in code no harness
+executes. Two did not. The published build's `input-check` ran the hold-Space
+path and asserted the wrong contract, so a green harness certified the wrong
+behaviour: it encoded the wrong contract. And the cast setting shipped with two
+ungated readers — the practice range and the Help page — in `lines.ts`, a file
+three harnesses import, because every check written for it tested the call sites
+its author remembered, and the defect was forgetting two others. `menu-check`
+now greps the source for readers of a cast string instead, which is the one
+thing that cannot forget.
 - Harness failures are exit-code failures with a printed table. These are the safety
   net — tune `tuning.ts` until they pass; never weaken an assertion to pass.
 

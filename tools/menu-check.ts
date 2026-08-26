@@ -11,6 +11,8 @@
 //     --log-level=warning --outfile=node_modules/.cache/menu-check.mjs \
 //   && node node_modules/.cache/menu-check.mjs
 
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createFlow } from '../src/game/flow'
 import * as L from '../src/game/lines'
 import { createScanner } from '../src/input/scanner'
@@ -39,6 +41,10 @@ import type {
 import type { Hud, HudItemSpec } from '../src/ui/hud'
 
 let failures = 0
+// The bundle runs from node_modules/.cache; pnpm runs a script with the
+// package root as cwd, so that is the only reliable anchor.
+const SRC = join(process.cwd(), 'src')
+
 const results: Array<[string, boolean, string]> = []
 const check = (name: string, ok: boolean, detail = '') => {
 	results.push([name, ok, detail])
@@ -757,6 +763,56 @@ const courseFocusChecks = () => {
 	)
 }
 
+// ---------- 5a2. no ungated reader of a cast string ----------
+
+// This one reads the SOURCE, not the behaviour, and it exists because the
+// behavioural checks below could not have caught what they were written for.
+// The cast setting shipped with two ungated readers — `rangeNarrate` (the
+// practice range, the mode most likely to be a first screen) and a
+// module-level `HELP_PAGES` const that spoke "Brick is deaf" to players who
+// had the layer off. Both were invisible here because a behavioural check can
+// only test the call sites its author remembered, and the whole failure was
+// forgetting two. A grep cannot forget.
+//
+// The rule: `.name` and `.blurb` on a SHAPES entry are the cast strings, and
+// the ONLY code allowed to read them is the two accessors that take the
+// setting. Anything else must go through shapeName()/shapeBlurb(). Adding a
+// reader is fine — gate it, or add it to ALLOWED deliberately and say why.
+const castSourceChecks = () => {
+	const ALLOWED = new Set([
+		'characters ? SHAPES[id].name : SHAPES[id].plainName',
+		'characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb',
+	])
+	const files = readdirSync(join(SRC, 'game'))
+		.filter((f) => f.endsWith('.ts'))
+		.map((f) => join(SRC, 'game', f))
+		.concat([join(SRC, 'ui', 'hud.ts'), join(SRC, 'main.ts')])
+	const leaks: string[] = []
+	for (const file of files) {
+		const lines = readFileSync(file, 'utf8').split('\n')
+		lines.forEach((line, i) => {
+			// both access syntaxes: SHAPES[id].name and SHAPES.sphere.name.
+			// The first version of this check only had the bracket form, which
+			// is exactly how the HELP_PAGES leak survived a grep.
+			if (!/SHAPES(\[[^\]]+\]|\.\w+)\.(name|blurb)\b/.test(line)) return
+			if ([...ALLOWED].some((a) => line.includes(a))) return
+			leaks.push(`${file.replace(SRC, 'src')}:${i + 1}: ${line.trim()}`)
+		})
+	}
+	check(
+		'no code outside shapeName()/shapeBlurb() reads a cast string',
+		leaks.length === 0,
+		leaks.join(' | '),
+	)
+	// ...and the check is worthless if the accessors moved, so prove it can see them.
+	const seen = readFileSync(join(SRC, 'game', 'lines.ts'), 'utf8')
+	check(
+		'the two allowed readers are still present (this check is not vacuous)',
+		[...ALLOWED].every((a) => seen.includes(a)),
+		'shapeName/shapeBlurb no longer match the allowlist',
+	)
+}
+
 // ---------- 5b. the cast layer is all-or-nothing ----------
 
 // Settings.characters is off by default, so the DEFAULT experience is the one
@@ -764,6 +820,38 @@ const courseFocusChecks = () => {
 // character name, or "In the cup! Brick is very pleased." for a player who
 // never opted into Brick — reads as a bug rather than a style.
 const castLayerChecks = () => {
+	// The Help page shipped as a module-level const, evaluated once at import
+	// with no way to consult the setting, so it read out the whole cast —
+	// including "Brick is deaf" and "Glide does not walk" — to a player who had
+	// the layer off. It is the one screen where the disability framing is
+	// delivered in full, which makes it the worst place for it to leak.
+	const helpOff = L.helpPages(false)
+	const helpOn = L.helpPages(true)
+	const teamOff = helpOff.find((p) => /shapes|team/i.test(p.label))
+	const teamOn = helpOn.find((p) => /shapes|team/i.test(p.label))
+	// '' rather than a guard on every line: a missing page then fails every
+	// assertion below instead of silently skipping them.
+	const speakOff = teamOff?.speak ?? ''
+	const speakOn = teamOn?.speak ?? ''
+	check('the Help page has a shapes page in both modes', speakOff !== '' && speakOn !== '', '')
+	for (const id of SHAPE_ORDER) {
+		check(
+			`${id}: the Help shapes page follows the cast setting`,
+			speakOff.includes(SHAPES[id].plainBlurb) && !speakOff.includes(SHAPES[id].blurb),
+			speakOff,
+		)
+	}
+	check(
+		'no character pronoun anywhere in the plain Help page',
+		speakOff !== '' && !/\b(she|he|her|him|his|hers)\b/i.test(speakOff),
+		speakOff,
+	)
+	check(
+		'the Help page names the cast when the cast is on',
+		SHAPE_ORDER.every((id) => speakOn.includes(SHAPES[id].name)),
+		speakOn,
+	)
+
 	// The cast is written with gendered pronouns and disability-coded detail
 	// (CAST.md); plain mode is written entirely in "it". That makes a pronoun
 	// the cheapest reliable tell that a character line leaked into plain mode.
@@ -803,6 +891,22 @@ const castLayerChecks = () => {
 			total: 100,
 		}
 		const anyHole = COURSES[0]?.holes[0] as HoleSpec
+		// The practice range shipped ungated: a player picking a row labelled
+		// "Cube" heard "Brick went 82 yards!". It is also the mode this game's
+		// own flow.ts calls "most likely to be someone's FIRST screen".
+		const rangeOff = L.rangeNarrate(holedOut, id, false)
+		const rangeOn = L.rangeNarrate(holedOut, id, true)
+		check(
+			`${id}: the practice range follows the cast setting`,
+			rangeOff.includes(SHAPES[id].plainName) && !PRONOUN.test(rangeOff),
+			rangeOff,
+		)
+		check(
+			`${id}: the practice range uses the character name when the cast is on`,
+			rangeOn.includes(SHAPES[id].name),
+			rangeOn,
+		)
+
 		const cupOff = L.narrate(holedOut, id, anyHole, false)
 		const cupOn = L.narrate(holedOut, id, anyHole, true)
 		check(`${id}: plain hole-out says only that it went in`, cupOff === 'In the cup!', cupOff)
@@ -829,6 +933,7 @@ const main = async () => {
 	await watchdogChecks()
 	settingsSpeechChecks()
 	courseFocusChecks()
+	castSourceChecks()
 	castLayerChecks()
 	focusOrderChecks()
 

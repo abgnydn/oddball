@@ -103,6 +103,13 @@
 	--stripe: #000000;
 	/* highlight ring width (medium default; see data-hl below) */
 	--hl-w: 8px;
+	/* How far the ring reaches OUTSIDE the row: outline width + outline-offset.
+	   Defined once, here, because three places need it and they had drifted
+	   into hard-coded numbers — the scroll padding that keeps the ring on
+	   screen, the pulse's box-shadow, and layout-check's detector. The offset
+	   is the only part that changes per breakpoint. */
+	--hl-offset: 4px;
+	--hl-reach: calc(var(--hl-w) + var(--hl-offset));
 }
 
 html[data-theme='light'] {
@@ -291,10 +298,20 @@ body {
 .scan-panel {
 	width: clamp(min(16rem, 46vw), 34%, 30rem);
 	overflow-y: auto;
-	/* Zero, not a comfort margin: when the panel has less slack than the padding,
-	   scrollIntoView({block:'nearest'}) cannot satisfy it and leaves the row a
-	   few px outside the box. A tight fit beats a pretty one that clips. */
-	scroll-padding-block: 0;
+	/* 12px = the focus ring's full reach (8px outline + 4px offset). It was 0,
+	   on the reasoning that a comfort margin the panel cannot afford leaves the
+	   ROW outside the box, and a clipped row is worse than a clipped ring. The
+	   reasoning was right and the value was wrong: with 0,
+	   scrollIntoView({block:'nearest'}) parks the row's border box flush against
+	   the scrollport and `overflow-y: auto` then cuts the entire bottom stroke
+	   of the ring — measured 12.3-12.5px on the last row of the settings list at
+	   every viewport tried. For a player scanning by switch the ring is not
+	   decoration, it is the only signal of what Enter will pick.
+	   The original worry is real but it is now checkable rather than argued:
+	   layout-check measures every row against the scrollport across 570 cells,
+	   so if this value ever costs a row its place on screen, the harness says so
+	   instead of a reviewer having to guess. */
+	scroll-padding-block: var(--hl-reach);
 	padding: min(1rem, 14px);
 	display: flex;
 	flex-direction: column;
@@ -319,6 +336,67 @@ body {
 	}
 
 	.scan-panel {
+		width: 100%;
+		border-left: none;
+		border-top: 3px solid var(--border);
+	}
+}
+
+/* Large print on a mid-width screen starves the panel the same way a narrow
+   screen does, so it gets the same answer: stack.
+
+   The side-by-side panel is `clamp(min(16rem, 46vw), 34%, 30rem)`, and on a
+   600px-wide window the binding term is 46vw = 276px — a figure that ignores
+   the text setting entirely. At 200% the longest label in the game ("Pancake")
+   needs 307px, so it painted 132px outside its own row, over the canvas and
+   past the screen edge. Every tablet in portrait (768/800/810/820/834) sits in
+   that band.
+
+   The breakpoints below are the measured edge of the defect plus margin, swept
+   at 25px steps on a 1024px-tall viewport — widest overflowing width by text
+   scale: 200% -> 875, 175% -> 775, 150% -> 675, 125% -> 600, 100% -> none.
+   They are enforced, not asserted: layout-check's grid covers this band, so a
+   wrong number here fails the harness instead of shipping.
+
+   Placed here, immediately after the max-width:560 stack and BEFORE the
+   short-viewport tiers, on purpose. `.canvas-wrap`'s flex share is set with
+   !important in three places; on a screen that is both mid-width and short the
+   later max-height:400 rule has to win, and document order is what decides
+   that. */
+@media (max-width: 900px) {
+	:root[data-font='150'] .main,
+	:root[data-font='175'] .main,
+	:root[data-font='200'] .main {
+		flex-direction: column;
+	}
+
+	:root[data-font='150'] .canvas-wrap,
+	:root[data-font='175'] .canvas-wrap,
+	:root[data-font='200'] .canvas-wrap {
+		flex: 0 0 34% !important;
+		min-height: 0;
+	}
+
+	:root[data-font='150'] .scan-panel,
+	:root[data-font='175'] .scan-panel,
+	:root[data-font='200'] .scan-panel {
+		width: 100%;
+		border-left: none;
+		border-top: 3px solid var(--border);
+	}
+}
+
+@media (max-width: 640px) {
+	:root[data-font='125'] .main {
+		flex-direction: column;
+	}
+
+	:root[data-font='125'] .canvas-wrap {
+		flex: 0 0 34% !important;
+		min-height: 0;
+	}
+
+	:root[data-font='125'] .scan-panel {
 		width: 100%;
 		border-left: none;
 		border-top: 3px solid var(--border);
@@ -576,7 +654,7 @@ body {
 /* the highlight ring: the single most important visual in the game */
 [data-scan-focus='true'] {
 	outline: var(--hl-w) solid var(--focus-ring);
-	outline-offset: 4px;
+	outline-offset: var(--hl-offset);
 	background: color-mix(in srgb, var(--accent) 18%, var(--panel));
 	animation: hl-pulse 1.6s ease-in-out infinite;
 }
@@ -686,6 +764,30 @@ body {
    supposed to guarantee "one row still fits" and did not. Cutting the type and
    the padding again is what makes the guarantee true; the caption bar still
    prints the same words in very large print. */
+/* On a panel this small the ring's 4px standoff is room the row needs more.
+   Tightening the offset to 0 keeps the ring WHOLE — it just sits flush against
+   the row instead of floating off it — and because scroll-padding is derived
+   from --hl-reach, the scroll behaviour follows automatically. Found by
+   layout-check's ring detector at 320x320 @175% and @200%, which is the case
+   the old `scroll-padding-block: 0` comment predicted and mis-solved. */
+@media (max-height: 400px), (max-width: 360px) {
+	:root {
+		--hl-offset: 0px;
+	}
+
+	/* And the thick ring is served the medium width here. A 12px ring on a
+	   320x320 panel at 200% text cannot be drawn in full — measured 7.4px of it
+	   cut off — and a thick ring with a missing edge is not a thicker ring, it
+	   is a broken one. This overrides the player's Highlight setting, which is
+	   a real cost; it buys the thickest ring that actually closes. Every other
+	   control degrades on these screens too (row height, type size, the ring's
+	   standoff above), so this is the same trade, applied to the one visual the
+	   player steers by. */
+	html[data-hl='thick'] {
+		--hl-w: 8px;
+	}
+}
+
 @media (max-height: 400px) {
 	.scan-item {
 		font-size: min(1rem, 17px);

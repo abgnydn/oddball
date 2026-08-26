@@ -15,10 +15,13 @@
 //     grids — one of 60 cells, one of ~2450 row measurements — both missed
 //     every one of them, because each picked short viewports that were wide
 //     and narrow viewports that were tall. Grid design beats grid size.
-//  2. Measure at 200%. At the 125% default the Pause button is 2.2rem x 20px
-//     = exactly 44px, which is also what the cap produces — so the broken and
-//     the fixed build measure identically there. The bug is only visible at
-//     200%.
+//  2. Measure at every scale, and never trust one. The original grid skipped
+//     150% and 150% is where the mid-width overflow ran furthest before it
+//     stopped. And at the 125% default the Pause button's floor (2.2rem x 20px
+//     = 44px) equals what the short-screen cap produces, so a broken and a
+//     fixed build measure identically there — that one is only visible at 200%.
+//     Note the floor and the rendered height differ: 44px is the min-height,
+//     44.6px is what the browser paints at 125% on a tall viewport.
 //
 // Run: pnpm layout-check
 
@@ -62,9 +65,31 @@ const VIEWPORTS: Array<[number, number]> = [
 	[280, 653], // Galaxy Fold cover screen
 	[280, 560],
 	[280, 480],
+	// --- the OTHER corner: mid-width AND tall, where large print starves the
+	// side-by-side panel. This band was empty in the first version of this
+	// grid: every wide cell above was >=900px, every short one <=400px tall,
+	// so the one region where a tablet in portrait lives had no cell at all.
+	// A rendering review found "Pancake" painting 132px outside its row here
+	// while this harness reported ALL PASS. Widest overflowing width measured
+	// per text scale was 875 (200%), 775 (175%), 675 (150%), 600 (125%).
+	[575, 1024],
+	[600, 1024],
+	[640, 1024],
+	[675, 1024],
+	[720, 1024],
+	[768, 1024], // iPad portrait
+	[800, 1024],
+	[834, 1024], // iPad Air portrait
+	[875, 1024],
+	[900, 1024],
+	[820, 1180], // iPad Air 10.9 portrait
+	[810, 1080], // iPad 10.2 portrait
 ]
 
-const SCALES = [100, 125, 175, 200]
+// 150 was missing and the band above is where it bites: at 150% the overflow
+// ran to 675px wide. A scale the grid does not test is a scale the grid does
+// not cover, however many cells it has.
+const SCALES = [100, 125, 150, 175, 200]
 
 // title:    fewest rows, shortest labels — the easy case.
 // settings: the most rows, so the first to overflow vertically.
@@ -83,9 +108,11 @@ interface Cell {
 	h: number
 	scale: number
 	screen: string
+	pass: string
 	rows: number
 	clipped: Array<{ id: string; by: number }>
 	hClipped: string[]
+	ringCut: Array<{ id: string; by: number }>
 	pauseOutside: number
 	pauseMinHeight: string
 	docHOverflow: number
@@ -122,7 +149,7 @@ const serve = (): Promise<{ url: string; close: () => void }> =>
 		})
 	})
 
-const SETTINGS = (scale: number) =>
+const SETTINGS = (scale: number, highlightThick = 'medium', characters = false) =>
 	JSON.stringify({
 		settings: {
 			ttsOn: false,
@@ -131,14 +158,70 @@ const SETTINGS = (scale: number) =>
 			scanMs: 2000,
 			fontScale: scale,
 			theme: 'high-contrast',
-			highlightThick: 'medium',
+			highlightThick,
 			audioCues: false,
 			reduceMotion: true,
 			flightTone: false,
 			dwell: 'off',
 			autoScan: false,
+			characters,
 		},
 	})
+
+// The main grid runs one combination of the two settings that change layout
+// without changing size — the ring is 4/8/12px by Highlight, and the labels
+// change with Character names. Sweeping both across 570 cells would triple the
+// runtime for cells that mostly repeat, so instead they get a focused pass over
+// the viewports where each is tightest: the shortest screens for the ring
+// (thick reaches 12px, the exact figure that just failed at 320x320), and the
+// mid-width band for the labels (the cast names are shorter than the plain
+// ones, but "Penny" was still spilling 87px there before the stack fix).
+interface Pass {
+	label: string
+	viewports: Array<[number, number]>
+	scales: number[]
+	highlightThick: string
+	characters: boolean
+}
+const PASSES: Pass[] = [
+	{
+		label: 'grid',
+		viewports: VIEWPORTS,
+		scales: SCALES,
+		highlightThick: 'medium',
+		characters: false,
+	},
+	{
+		label: 'thick ring',
+		viewports: [
+			[320, 320],
+			[320, 400],
+			[360, 320],
+			[280, 480],
+			[400, 300],
+			[600, 300],
+			[844, 325],
+			[1024, 768],
+		],
+		scales: [125, 200],
+		highlightThick: 'thick',
+		characters: false,
+	},
+	{
+		label: 'cast names',
+		viewports: [
+			[575, 1024],
+			[768, 1024],
+			[875, 1024],
+			[320, 320],
+			[280, 480],
+			[912, 1368],
+		],
+		scales: [125, 200],
+		highlightThick: 'medium',
+		characters: true,
+	},
+]
 
 const main = async () => {
 	// A build older than the sources measures the wrong thing and says nothing.
@@ -205,11 +288,36 @@ const main = async () => {
 			pause.style.transform = 'translateY(9000px)'
 			const outside = pause.getBoundingClientRect().bottom - innerHeight
 			pause.style.transform = oldT
-			return { vClip: +vClip.toFixed(0), hOver, outside: +outside.toFixed(0) }
+			// (d) an absurdly wide ring on an unclipped row must register as cut.
+			// Forced with an inline outline rather than by moving the row: the
+			// point is that the ROW is fine and only the ring is lost, which is
+			// exactly the case the detector was added for.
+			const oldO = row.style.outline
+			const oldOff = row.style.outlineOffset
+			row.setAttribute('data-scan-focus', 'true')
+			row.style.outline = '400px solid red'
+			row.style.outlineOffset = '400px'
+			row.scrollIntoView({ block: 'nearest' })
+			const rcs = getComputedStyle(row)
+			const reach = parseFloat(rcs.outlineWidth || '0') + parseFloat(rcs.outlineOffset || '0')
+			pr = panel.getBoundingClientRect()
+			rr = row.getBoundingClientRect()
+			const ring =
+				Math.max(0, pr.top + parseFloat(cs.borderTopWidth) - (rr.top - reach)) +
+				Math.max(0, rr.bottom + reach - (pr.bottom - parseFloat(cs.borderBottomWidth)))
+			row.style.outline = oldO
+			row.style.outlineOffset = oldOff
+			row.removeAttribute('data-scan-focus')
+			return {
+				vClip: +vClip.toFixed(0),
+				hOver,
+				outside: +outside.toFixed(0),
+				ring: +ring.toFixed(0),
+			}
 		})
-		if (probes.vClip < 100 || !probes.hOver || probes.outside < 100) {
+		if (probes.vClip < 100 || !probes.hOver || probes.outside < 100 || probes.ring < 100) {
 			console.log(
-				`layout-check: SELF-TEST FAILED — vClip=${probes.vClip} hOver=${probes.hOver} pauseOutside=${probes.outside}. A detector that does not fire on a broken layout proves nothing about a clean one.`,
+				`layout-check: SELF-TEST FAILED — vClip=${probes.vClip} hOver=${probes.hOver} pauseOutside=${probes.outside} ringCut=${probes.ring}. A detector that does not fire on a broken layout proves nothing about a clean one.`,
 			)
 			process.exit(1)
 		}
@@ -217,98 +325,150 @@ const main = async () => {
 			`clip detector fired at ${probes.vClip}px`,
 			`overflow detector fired`,
 			`Pause detector fired at ${probes.outside}px`,
+			`ring detector fired at ${probes.ring}px`,
 		)
 
-		for (const [w, h] of VIEWPORTS) {
-			for (const scale of SCALES) {
-				await page.setViewportSize({ width: w, height: h })
-				await page.goto(url, { waitUntil: 'load' })
-				await page.evaluate((s) => localStorage.setItem('oddball-save-v1', s), SETTINGS(scale))
+		for (const pass of PASSES) {
+			for (const [w, h] of pass.viewports) {
+				for (const scale of pass.scales) {
+					await page.setViewportSize({ width: w, height: h })
+					await page.goto(url, { waitUntil: 'load' })
+					await page.evaluate(
+						(s) => localStorage.setItem('oddball-save-v1', s),
+						SETTINGS(scale, pass.highlightThick, pass.characters),
+					)
 
-				for (const screen of SCREENS) {
-					// Reload per screen rather than navigating between them: the flow
-					// has no universal "back", and a wrong click would leave the
-					// harness measuring a screen it did not mean to measure.
-					await page.reload({ waitUntil: 'load' })
-					if (screen !== 'title') {
-						const clicked = await page.evaluate((pattern) => {
-							const rows = [...document.querySelectorAll('.scan-item')]
-							const row = rows.find((r) => new RegExp(pattern, 'i').test(r.textContent ?? ''))
-							row?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-							return row !== undefined
-						}, SCREEN_ENTRY[screen])
-						// A silently-missed click would measure the title screen twice
-						// and report the other screen as clean.
-						if (!clicked) {
-							console.log(`layout-check: could not reach ${screen} at ${w}x${h} @${scale}%`)
-							process.exit(1)
+					for (const screen of SCREENS) {
+						// Reload per screen rather than navigating between them: the flow
+						// has no universal "back", and a wrong click would leave the
+						// harness measuring a screen it did not mean to measure.
+						await page.reload({ waitUntil: 'load' })
+						if (screen !== 'title') {
+							const clicked = await page.evaluate((pattern) => {
+								const rows = [...document.querySelectorAll('.scan-item')]
+								const row = rows.find((r) => new RegExp(pattern, 'i').test(r.textContent ?? ''))
+								row?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+								return row !== undefined
+							}, SCREEN_ENTRY[screen])
+							// A silently-missed click would measure the title screen twice
+							// and report the other screen as clean.
+							if (!clicked) {
+								console.log(`layout-check: could not reach ${screen} at ${w}x${h} @${scale}%`)
+								process.exit(1)
+							}
+							await page.waitForTimeout(250)
 						}
-						await page.waitForTimeout(250)
-					}
 
-					// Focus each row in turn: the caption bar resizes with the focused
-					// item, which changes the panel's height. Measuring without moving
-					// focus reports 0 clipped on a build that clips.
-					const cell = await page.evaluate(() => {
-						const panel = document.querySelector('.scan-panel') as HTMLElement | null
-						const rows = [...document.querySelectorAll('.scan-panel .scan-item')] as HTMLElement[]
-						const clipped: Array<{ id: string; by: number }> = []
-						const hClipped: string[] = []
-						if (panel !== null) {
-							for (const row of rows) {
-								row.scrollIntoView({ block: 'nearest' })
-								const pr = panel.getBoundingClientRect()
-								const cs = getComputedStyle(panel)
-								// The visual window of a scrolling box is its PADDING box (the
-								// scrollport), not its content box: padding scrolls with the
-								// content and is visible. Measuring against the content box
-								// subtracts real estate the user can see and reports a uniform
-								// ~14px clip on every row of a perfectly good layout — which is
-								// what this harness did on its first run, on 199 of 208 cells.
-								const top = pr.top + parseFloat(cs.borderTopWidth)
-								const bottom = pr.bottom - parseFloat(cs.borderBottomWidth)
-								const rr = row.getBoundingClientRect()
-								const by = Math.max(0, top - rr.top) + Math.max(0, rr.bottom - bottom)
-								if (by > 1)
-									clipped.push({ id: row.id || row.textContent!.slice(0, 24), by: +by.toFixed(1) })
-								// Horizontal: the row's own ink against its content box. Do NOT
-								// use a child span's scrollWidth — as a flex item it shrinks, so
-								// that check is structurally always 0 and silently vacuous.
-								if (row.scrollWidth - row.clientWidth > 1 || rr.right > pr.right + 1) {
-									hClipped.push(row.id || row.textContent!.slice(0, 24))
+						// Focus each row in turn: the caption bar resizes with the focused
+						// item, which changes the panel's height. Measuring without moving
+						// focus reports 0 clipped on a build that clips.
+						const cell = await page.evaluate(() => {
+							const panel = document.querySelector('.scan-panel') as HTMLElement | null
+							const rows = [...document.querySelectorAll('.scan-panel .scan-item')] as HTMLElement[]
+							const clipped: Array<{ id: string; by: number }> = []
+							const hClipped: string[] = []
+							const ringCut: Array<{ id: string; by: number }> = []
+							if (panel !== null) {
+								for (const row of rows) {
+									row.scrollIntoView({ block: 'nearest' })
+									const pr = panel.getBoundingClientRect()
+									const cs = getComputedStyle(panel)
+									// The visual window of a scrolling box is its PADDING box (the
+									// scrollport), not its content box: padding scrolls with the
+									// content and is visible. Measuring against the content box
+									// subtracts real estate the user can see and reports a uniform
+									// ~14px clip on every row of a perfectly good layout — which is
+									// what this harness did on its first run, on 199 of 208 cells.
+									const top = pr.top + parseFloat(cs.borderTopWidth)
+									const bottom = pr.bottom - parseFloat(cs.borderBottomWidth)
+									const rr = row.getBoundingClientRect()
+									const by = Math.max(0, top - rr.top) + Math.max(0, rr.bottom - bottom)
+
+									// The highlight ring, measured as its own thing. For a player
+									// scanning by switch the ring is the only signal of what Enter
+									// will pick, and it is drawn OUTSIDE the row's border box, so a
+									// row that is fully on screen can still have its ring cut off by
+									// the scrollport. That shipped: 12.4px of the bottom stroke gone
+									// on the last row of the settings list, on every viewport, while
+									// every row measured as unclipped.
+									// The reach is read from the live style rather than hard-coded:
+									// the ring is 4/8/12px by the Highlight setting, so a literal
+									// here would silently stop matching two of the three.
+									row.setAttribute('data-scan-focus', 'true')
+									const fs = getComputedStyle(row)
+									const reach =
+										parseFloat(fs.outlineWidth || '0') + parseFloat(fs.outlineOffset || '0')
+									row.removeAttribute('data-scan-focus')
+									const cut =
+										Math.max(0, top - (rr.top - reach)) + Math.max(0, rr.bottom + reach - bottom)
+									if (cut > 1)
+										ringCut.push({
+											id: row.id || row.textContent!.slice(0, 24),
+											by: +cut.toFixed(1),
+										})
+									if (by > 1)
+										clipped.push({
+											id: row.id || row.textContent!.slice(0, 24),
+											by: +by.toFixed(1),
+										})
+									// Horizontal: the row's own ink against its content box. Do NOT
+									// use a child span's scrollWidth — as a flex item it shrinks, so
+									// that check is structurally always 0 and silently vacuous.
+									// scrollWidth vs clientWidth alone is NOT enough: clientWidth
+									// includes the row's own padding, so ink that overruns the
+									// content box but lands inside the padding is invisible to it.
+									// That is exactly how a 12.8px overrun at 912x1368 read as 0
+									// while the same defect showed 132px one viewport over. Measure
+									// the ink against the CONTENT box as well.
+									const rcs = getComputedStyle(row)
+									const contentW =
+										row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight)
+									const inkW = [...row.children].reduce(
+										(a, c) => a + (c as HTMLElement).getBoundingClientRect().width,
+										0,
+									)
+									if (
+										row.scrollWidth - row.clientWidth > 1 ||
+										rr.right > pr.right + 1 ||
+										inkW - contentW > 1
+									) {
+										hClipped.push(row.id || row.textContent!.slice(0, 24))
+									}
 								}
 							}
-						}
-						const pause = document.querySelector('.footer-pause') as HTMLElement | null
-						const pr = pause?.getBoundingClientRect()
-						const outside =
-							pr === undefined
-								? -1
-								: +Math.max(
-										0,
-										pr.bottom - innerHeight,
-										pr.right - innerWidth,
-										-pr.top,
-										-pr.left,
-									).toFixed(1)
-						return {
-							rows: rows.length,
-							clipped,
-							hClipped,
-							pauseOutside: outside,
-							pauseMinHeight: pause === null ? 'none' : getComputedStyle(pause).minHeight,
-							docHOverflow:
-								document.documentElement.scrollWidth - document.documentElement.clientWidth,
-						}
-					})
-					cells++
-					rowsMeasured += cell.rows
-					const failed =
-						cell.clipped.length > 0 ||
-						cell.hClipped.length > 0 ||
-						cell.pauseOutside > 0 ||
-						cell.docHOverflow > 0
-					if (failed) bad.push({ w, h, scale, screen, ...cell })
+							const pause = document.querySelector('.footer-pause') as HTMLElement | null
+							const pr = pause?.getBoundingClientRect()
+							const outside =
+								pr === undefined
+									? -1
+									: +Math.max(
+											0,
+											pr.bottom - innerHeight,
+											pr.right - innerWidth,
+											-pr.top,
+											-pr.left,
+										).toFixed(1)
+							return {
+								rows: rows.length,
+								clipped,
+								hClipped,
+								ringCut,
+								pauseOutside: outside,
+								pauseMinHeight: pause === null ? 'none' : getComputedStyle(pause).minHeight,
+								docHOverflow:
+									document.documentElement.scrollWidth - document.documentElement.clientWidth,
+							}
+						})
+						cells++
+						rowsMeasured += cell.rows
+						const failed =
+							cell.clipped.length > 0 ||
+							cell.hClipped.length > 0 ||
+							cell.ringCut.length > 0 ||
+							cell.pauseOutside > 0 ||
+							cell.docHOverflow > 0
+						if (failed) bad.push({ w, h, scale, screen, pass: pass.label, ...cell })
+					}
 				}
 			}
 		}
@@ -318,7 +478,7 @@ const main = async () => {
 	}
 
 	console.log(
-		`layout-check: ${cells} cells (${VIEWPORTS.length} viewports x ${SCALES.length} scales x ${SCREENS.length} screens), ${rowsMeasured} row measurements`,
+		`layout-check: ${cells} cells (${VIEWPORTS.length} viewports x ${SCALES.length} scales x ${SCREENS.length} screens, plus focused passes for the thick ring and the cast names), ${rowsMeasured} row measurements`,
 	)
 	console.log(`self-test: ${selfTest.join('; ')} — a detector that cannot fail is not a check`)
 	for (const c of bad) {
@@ -327,9 +487,11 @@ const main = async () => {
 			parts.push(`rows clipped: ${c.clipped.map((x) => `${x.id} by ${x.by}px`).join(', ')}`)
 		}
 		if (c.hClipped.length > 0) parts.push(`rows overflowing sideways: ${c.hClipped.join(', ')}`)
+		if (c.ringCut.length > 0)
+			parts.push(`highlight ring cut: ${c.ringCut.map((x) => `${x.id} by ${x.by}px`).join(', ')}`)
 		if (c.pauseOutside > 0) parts.push(`Pause ${c.pauseOutside}px outside the viewport`)
 		if (c.docHOverflow > 0) parts.push(`document overflows ${c.docHOverflow}px horizontally`)
-		console.log(`FAIL  ${c.w}x${c.h} @${c.scale}% ${c.screen} — ${parts.join('; ')}`)
+		console.log(`FAIL  ${c.w}x${c.h} @${c.scale}% ${c.screen} [${c.pass}] — ${parts.join('; ')}`)
 	}
 	if (bad.length > 0) {
 		console.log(`\n${bad.length} of ${cells} cells failed`)

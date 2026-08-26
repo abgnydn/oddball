@@ -2,7 +2,7 @@
 // common words, whole yards. The narrator speaks about the cast matter-of-factly
 // — ability first, never pity, never "despite" (CAST.md).
 
-import { MAX_CUSTOM_HOLES, MAX_STROKES, SHAPES, yd } from '../tuning'
+import { MAX_CUSTOM_HOLES, MAX_STROKES, SHAPE_ORDER, SHAPES, yd } from '../tuning'
 import type { BallState, HoleSpec, ShapeId, StrikeOutcome, Surface } from '../types'
 
 export const GAME_TITLE = 'Odd Ball'
@@ -65,7 +65,11 @@ export const MENU = {
 	exitArmedSpeak: 'Leave this round? Pick this again to be sure.',
 }
 
-export const HELP_PAGES: Array<{ label: string; speak: string }> = [
+/** A function, not a const: the "Meet the team" page reads the cast strings, and
+ *  a module-level const evaluates once at import with no way to consult the
+ *  player's setting. It shipped as a const and spoke "Brick is deaf" to players
+ *  who had the cast layer turned off. */
+export const helpPages = (characters: boolean): Array<{ label: string; speak: string }> => [
 	{
 		label: 'What is this game?',
 		speak:
@@ -77,14 +81,10 @@ export const HELP_PAGES: Array<{ label: string; speak: string }> = [
 			'Press Space to move to the next choice. Press Enter to pick it. Hold Space to go backwards. Hold Enter to open the menu. There is a Menu choice at the end of the list too, and a Pause button on the screen. In Settings you can turn on Auto scan, so the light moves by itself.',
 	},
 	{
-		label: 'Meet the team',
-		speak:
-			`${SHAPES.sphere.name}. ${SHAPES.sphere.blurb} ` +
-			`${SHAPES.cube.name}. ${SHAPES.cube.blurb} ` +
-			`${SHAPES.disc.name}. ${SHAPES.disc.blurb} ` +
-			`${SHAPES.pancake.name}. ${SHAPES.pancake.blurb} ` +
-			`${SHAPES.star.name}. ${SHAPES.star.blurb} ` +
-			`${SHAPES.egg.name}. ${SHAPES.egg.blurb}`,
+		label: characters ? 'Meet the team' : 'The shapes',
+		speak: SHAPE_ORDER.map(
+			(id) => `${shapeName(id, characters)}. ${shapeBlurb(id, characters)}`,
+		).join(' '),
 	},
 	{
 		label: 'Scoring',
@@ -140,10 +140,11 @@ const numWord = (n: number): string =>
 export const shapeName = (id: ShapeId, characters: boolean): string =>
 	characters ? SHAPES[id].name : SHAPES[id].plainName
 
+export const shapeBlurb = (id: ShapeId, characters: boolean): string =>
+	characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb
+
 export const shapeFocus = (id: ShapeId, reachM: number, characters: boolean): string =>
-	`${shapeName(id, characters)}. Goes about ${yd(reachM)} yards. ${
-		characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb
-	}`
+	`${shapeName(id, characters)}. Goes about ${yd(reachM)} yards. ${shapeBlurb(id, characters)}`
 
 export const shapeConfirm = (id: ShapeId, characters: boolean): string =>
 	`${shapeName(id, characters)}. Here comes the swing!`
@@ -242,12 +243,12 @@ export const summaryLine2 = (t1: number, t2: number): string => {
 
 export const BEST_LINE = 'That is your best round here!'
 
-export const rangeNarrate = (out: StrikeOutcome, id: ShapeId): string => {
-	const name = SHAPES[id].name
+export const rangeNarrate = (out: StrikeOutcome, id: ShapeId, characters: boolean): string => {
+	const name = shapeName(id, characters)
 	const bounces = out.events.filter((e) => e.kind === 'bounce').length
 	let color = ''
 	if (bounces >= 3)
-		color = id === 'star' ? `Boing! ${bounces} bounces! ` : 'Bounce, bounce, bounce! '
+		color = characters && id === 'star' ? `Boing! ${bounces} bounces! ` : 'Bounce, bounce, bounce! '
 	else if (out.total - out.carry < 2 && out.total > 20)
 		color = `${name} landed and stayed right there. `
 	return `${color}${name} went ${yd(out.total)} yards! Pick a shape and go again.`

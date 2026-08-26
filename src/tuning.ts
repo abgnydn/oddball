@@ -113,8 +113,7 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 		name: 'Penny',
 		plainName: 'Pancake',
 		plainBlurb: 'It flies high, lands soft, and stays right there.',
-		blurb:
-			'Penny flies high, lands soft, and stays right there. She taps once for yes — she says what she needs to.',
+		blurb: 'Penny flies high, lands soft, and stays right there. She taps once for yes.',
 		maxCarry: 130,
 		launchDeg: 38,
 		drag: 0.015,

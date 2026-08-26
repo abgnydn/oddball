@@ -17,8 +17,19 @@ Every playable shape can be a character. Some of them have disabilities. With
 the setting off — the shipped default — none of this layer is spoken: a shape is
 named for what it is and described by what it does.
 
+That sentence was false when it was first written. Two places read the cast
+strings without consulting the setting: the practice range's narration, and this
+file's own contents by way of the Help page's "Meet the team", which was a
+module-level constant and so could not consult a setting even in principle. A
+player who turned the layer off could still be told "Brick is deaf" and "Glide
+does not walk". Both are gated now, `menu-check` covers the range, the Help page
+and the rack in both modes, and it greps the source for any new ungated reader —
+because the two behavioural checks written for this missed both sites, and a
+grep does not depend on remembering that a call site exists.
+
 The design rule this layer was built on — and the thing the review above has to
-rule on — is **a disability is never a debuff**: the compensating ability is the
+rule on — is that no character's disability makes them worse at the game: the
+compensating ability is the
 character's mechanical identity, the language leads with what they can do, and
 the narrator is matter-of-fact rather than admiring. That is a compensation
 framing, and it is contested; it is written here as the assumption under review,
@@ -26,8 +37,7 @@ not as a settled principle. Two of the six shapes are left unmapped.
 
 The game's strategy statement is the disability-positive statement: no shape is
 ranked above another, and each purposeful shape has a hole where it is the right
-choice (the gamble shapes win by luck, on purpose — the harness asserts exactly
-that, no more).
+choice. The gamble shapes win by luck by design; the harness asserts only that.
 
 ## The six
 
@@ -36,6 +46,13 @@ that, no more).
 | Sphere | **Dot** | Blind — hears everything | Homing rollout: after her bounces settle, her roll bends toward the cup's beeper (bounded — see below). NEW sim mechanic. |
 | Cube | **Brick** | Deaf — the wind can't trick him | Lowest windSens + dead stop. Already true in tuning; zero sim change. |
 | Pancake | **Penny** | Nonspeaking — taps once for yes | High lob, lands soft, stays put. Narrative only: when Penny holes out, one soft tap (sfx) before the piano note; the narrator waits for it. |
+
+The blurb used to end "she taps once for yes — **she says what she needs to**".
+That last clause was cut: it is a judgement that a one-bit yes/no output is
+sufficient communication, made on a nonspeaking character's behalf, spoken aloud
+to an audience that includes nonspeaking players and the people who support
+them. AAC practice starts from the opposite premise. The tap can be Penny's
+without the game ruling on whether it is enough.
 | Disc | **Glide** | Doesn't walk — flies | Longest reach, wind is their challenge. Aspirational mapping, no sim change. |
 | Star | **Boing** | none — pure joy | Chaos bounces. Deliberately unmapped. |
 | Egg | **Egg** | none — pure luck | Huge variance. Deliberately unmapped, comic relief. |
@@ -58,7 +75,7 @@ is off — same facts, no persona, no pronouns.
 - Dot: "Dot hears everything. She listens for the beeper at the cup, and rolls right to it. She does not need to see it."
 - Brick: "Brick lands, and he stays. Wind moves him less than any other shape. Brick is deaf."
 - Glide: "Glide flies, and nobody flies farther. The wind pushes them around the most. Glide does not walk."
-- Penny: "Penny flies high, lands soft, and stays right there. She taps once for yes — she says what she needs to."
+- Penny: "Penny flies high, lands soft, and stays right there. She taps once for yes."
 - Boing: "Boing just loves to bounce. Boing! Where will he land? Even he doesn't know."
 - Egg: "The egg. Who knows where it will go? Not even the egg."
 
@@ -86,8 +103,10 @@ is off — same facts, no persona, no pronouns.
   "Penny taps once. That means yes."
 - Score lines and outcome lines refer to characters by name, not by shape word —
   with the setting on. With it off they use the plain name, the hole-out line
-  ends at "In the cup!", and Boing's "Boing!" bounce line falls back to the
-  neutral wording every other shape already used.
+  ends at "In the cup!", the practice range says "Pancake went 145 yards!"
+  rather than "Penny…", the Help page's shapes entry is titled "The shapes"
+  rather than "Meet the team", and Boing's "Boing!" bounce line falls back to
+  the neutral wording every other shape already used.
 - Title, help screen, and 'Where am I?' stay functional and plain.
 
 ## Before this goes to the NARBE library

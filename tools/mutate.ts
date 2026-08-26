@@ -198,6 +198,37 @@ MUTATIONS.push(
 	},
 )
 
+MUTATIONS.push(
+	{
+		// Shipped. The range is the mode flow.ts itself calls "most likely to be
+		// someone's FIRST screen", and it spoke the character name to a player
+		// who had the cast turned off.
+		name: 'lines: the practice range ignores the cast setting',
+		harness: 'menu-check',
+		edits: [
+			[
+				LN,
+				"\t\t\tcharacters && id === 'star' ? `Boing! ${bounces} bounces! ` : 'Bounce, bounce, bounce! '\n\tconst name = shapeName(id, characters)\n\tconst bounces",
+				"\t\t\tcharacters && id === 'star' ? `Boing! ${bounces} bounces! ` : 'Bounce, bounce, bounce! '\n\tconst name = SHAPES[id].name\n\tconst bounces",
+			],
+		],
+	},
+	{
+		// Shipped. A module-level const evaluated at import, so it could not
+		// consult the setting even in principle — it read out "Brick is deaf"
+		// to a player who had the layer off.
+		name: 'lines: the Help shapes page ignores the cast setting',
+		harness: 'menu-check',
+		edits: [
+			[
+				LN,
+				'\t\t\t(id) => `${shapeName(id, characters)}. ${shapeBlurb(id, characters)}`,',
+				'\t\t\t(id) => `${SHAPES[id].name}. ${SHAPES[id].blurb}`,',
+			],
+		],
+	},
+)
+
 const byName = (name: string): Mutation['edits'] => {
 	const m = MUTATIONS.find((x) => x.name === name)
 	if (m === undefined) throw new Error(`no mutation named ${JSON.stringify(name)}`)

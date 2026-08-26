@@ -268,7 +268,8 @@ export function createFlow(deps: Deps): Flow {
 		if (goBack) helpGoBack = goBack
 		hud.setScreen('How to Play')
 		hud.setMode('Help')
-		const specs: HudItemSpec[] = L.HELP_PAGES.map((p, i) => ({
+		const pages = L.helpPages(settings.characters)
+		const specs: HudItemSpec[] = pages.map((p, i) => ({
 			id: `page-${i}`,
 			label: p.label,
 			speak: `${p.label}. Press Enter to hear it.`,
@@ -282,7 +283,7 @@ export function createFlow(deps: Deps): Flow {
 					helpGoBack()
 					return
 				}
-				const page = L.HELP_PAGES[index]
+				const page = pages[index]
 				if (page) tts.speak(page.speak)
 			},
 			{ startIndex, rebuild: (i) => help(undefined, i) },
@@ -710,7 +711,7 @@ export function createFlow(deps: Deps): Flow {
 				if (token !== flightToken) return
 				lastTrail = out.points
 				lastShape = id
-				range(L.rangeNarrate(out, id))
+				range(L.rangeNarrate(out, id, settings.characters))
 			},
 		})
 	}
