@@ -131,8 +131,8 @@ const MUTATIONS: Mutation[] = [
 		edits: [
 			[
 				LN,
-				'\t`${shapeName(id, characters)}. Goes about ${yd(reachM)} yards. ${\n\t\tcharacters ? SHAPES[id].blurb : SHAPES[id].plainBlurb\n\t}`',
-				'\t`${shapeName(id, characters)}. ${\n\t\tcharacters ? SHAPES[id].blurb : SHAPES[id].plainBlurb\n\t} Goes about ${yd(reachM)} yards.`',
+				'\t`${shapeName(id, characters)}. Goes about ${yd(reachM)} yards. ${shapeBlurb(id, characters)}`',
+				'\t`${shapeName(id, characters)}. ${shapeBlurb(id, characters)} Goes about ${yd(reachM)} yards.`',
 			],
 		],
 	},
@@ -171,7 +171,7 @@ MUTATIONS.push(
 		name: 'lines: the cast blurb leaks into the plain reading',
 		harness: 'menu-check',
 		edits: [
-			[LN, '\t\tcharacters ? SHAPES[id].blurb : SHAPES[id].plainBlurb\n', '\t\tSHAPES[id].blurb\n'],
+			[LN, '\tcharacters ? SHAPES[id].blurb : SHAPES[id].plainBlurb\n', '\tSHAPES[id].blurb\n'],
 		],
 	},
 	{
@@ -208,8 +208,8 @@ MUTATIONS.push(
 		edits: [
 			[
 				LN,
-				"\t\t\tcharacters && id === 'star' ? `Boing! ${bounces} bounces! ` : 'Bounce, bounce, bounce! '\n\tconst name = shapeName(id, characters)\n\tconst bounces",
-				"\t\t\tcharacters && id === 'star' ? `Boing! ${bounces} bounces! ` : 'Bounce, bounce, bounce! '\n\tconst name = SHAPES[id].name\n\tconst bounces",
+				'rangeNarrate = (out: StrikeOutcome, id: ShapeId, characters: boolean): string => {\n\tconst name = shapeName(id, characters)',
+				'rangeNarrate = (out: StrikeOutcome, id: ShapeId, characters: boolean): string => {\n\tconst name = SHAPES[id].name',
 			],
 		],
 	},
