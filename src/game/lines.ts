@@ -43,7 +43,7 @@ export const MENU = {
 	// which is the first list a new player scans.
 	helpSpeak: 'How to Play. Learn the game and the shapes.',
 	settings: 'Settings',
-	settingsSpeak: 'Settings. Change the voice, the colors, and more.',
+	settingsSpeak: 'Settings. Change the speech, the colors, and more.',
 	back: 'Back',
 	backSpeak: 'Back. Go to the last screen.',
 	playAgain: 'Play again',
@@ -162,7 +162,10 @@ const HOLED_FLAVOR: Record<ShapeId, string> = {
 	disc: 'Glide takes a bow.',
 	egg: 'The egg is as surprised as you are.',
 	star: 'Boing bounces with joy.',
-	pancake: 'Penny taps once. That means yes.',
+	// "That means yes." was the narrator interpreting a one-bit output for the
+	// hearing player. The clause about a tap being sufficient communication was
+	// cut from Penny's blurb for that reason; the same reasoning applies here.
+	pancake: 'Penny taps once.',
 }
 
 export const narrate = (

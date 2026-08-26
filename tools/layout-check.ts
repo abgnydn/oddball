@@ -112,12 +112,34 @@ const SCALES = [100, 125, 150, 175, 200]
 //          of the screens here opened. It is also the screen the hub's contract
 //          argues hardest about (§12, "a locked door"), which made it the worst
 //          one to leave unmeasured.
-const SCREENS = ['title', 'settings', 'range', 'overlay'] as const
+// rack: an IN-ROUND screen, seeded to the hole with the longest name on the
+//       default course. Every other screen here has a short or empty header
+//       name, and the header was the one bar in the layout with no yield rule —
+//       so "The Staircase" wrapped it to two lines and put the Pause button
+//       11.4px below the fold at 320x568 @200%, a cell already in this grid.
+//       The pauseOutside detector would have caught it at any magnitude. It
+//       never visited a screen where it happens.
+const SCREENS = ['title', 'settings', 'range', 'overlay', 'rack'] as const
 const SCREEN_ENTRY: Record<(typeof SCREENS)[number], string> = {
 	title: '',
 	settings: 'settings',
 	range: 'practice',
 	overlay: '',
+	rack: '',
+}
+
+// Sunny Meadows hole 5. Seeded through the save rather than played, so the
+// screen is reached in one reload instead of four holes of simulation.
+const RACK_ROUND = {
+	players: 1,
+	player: 0,
+	course: 0,
+	hole: 4,
+	strokes: [[3, 3, 3, 3, 0, 0]],
+	ballX: 0,
+	lie: 'fairway',
+	highlight: 0,
+	seed: 1,
 }
 
 interface Cell {
@@ -133,6 +155,7 @@ interface Cell {
 	pauseOutside: number
 	pauseMinHeight: string
 	docHOverflow: number
+	docVOverflow: number
 }
 
 const serve = (): Promise<{ url: string; close: () => void }> =>
@@ -166,8 +189,15 @@ const serve = (): Promise<{ url: string; close: () => void }> =>
 		})
 	})
 
-const SETTINGS = (scale: number, highlightThick = 'medium', characters = false) =>
+const SETTINGS = (
+	scale: number,
+	highlightThick = 'medium',
+	characters = false,
+	reduceMotion = true,
+	round?: unknown,
+) =>
 	JSON.stringify({
+		...(round === undefined ? {} : { round }),
 		settings: {
 			ttsOn: false,
 			ttsRate: 1,
@@ -177,7 +207,7 @@ const SETTINGS = (scale: number, highlightThick = 'medium', characters = false) 
 			theme: 'high-contrast',
 			highlightThick,
 			audioCues: false,
-			reduceMotion: true,
+			reduceMotion,
 			flightTone: false,
 			dwell: 'off',
 			autoScan: false,
@@ -187,7 +217,7 @@ const SETTINGS = (scale: number, highlightThick = 'medium', characters = false) 
 
 // The main grid runs one combination of the two settings that change layout
 // without changing size — the ring is 4/8/12px by Highlight, and the labels
-// change with Character names. Sweeping both across 570 cells would triple the
+// change with Character names. Sweeping both across the whole grid would triple the
 // runtime for cells that mostly repeat, so instead they get a focused pass over
 // the viewports where each is tightest: the shortest screens for the ring
 // (thick reaches 12px, the exact figure that just failed at 320x320), and the
@@ -200,8 +230,30 @@ const SETTINGS = (scale: number, highlightThick = 'medium', characters = false) 
 const breakpointsFrom = (css: string): { heights: number[]; widths: number[] } => {
 	const heights = new Set<number>()
 	const widths = new Set<number>()
-	for (const m of css.matchAll(/@media[^{]*?max-(height|width):\s*(\d+)px/g)) {
-		;(m[1] === 'height' ? heights : widths).add(Number(m[2]))
+	// Per PRELUDE, then every condition inside it. The first version scanned the
+	// whole sheet with one lazy pattern, so `@media (max-height: 480px),
+	// (max-width: 400px)` yielded only the height — and 400px was the tier this
+	// harness had just been changed to police. A derivation that silently covers
+	// a subset is worse than a hand-written list, because it looks complete.
+	let conditions = 0
+	let commaPreludes = 0
+	for (const q of css.matchAll(/@media([^{]*)\{/g)) {
+		const prelude = q[1] as string
+		if (prelude.includes(',')) commaPreludes++
+		for (const m of prelude.matchAll(/max-(height|width):\s*(\d+)px/g)) {
+			;(m[1] === 'height' ? heights : widths).add(Number(m[2]))
+			conditions++
+		}
+	}
+	// Non-vacuity: the stylesheet has a comma-separated query, and if this parser
+	// stops seeing it the count of conditions will fall below the count of
+	// literals in the file. Both are cheap and both would have caught the bug.
+	const literals = [...css.matchAll(/max-(height|width):\s*\d+px/g)].length
+	if (commaPreludes === 0 || conditions < literals) {
+		console.log(
+			`layout-check: SELF-TEST FAILED — breakpoint parser saw ${conditions} conditions in ${commaPreludes} comma-preludes, but the stylesheet contains ${literals} max-* literals. A derivation that covers a subset looks complete and is not.`,
+		)
+		process.exit(1)
 	}
 	return { heights: [...heights].sort((a, b) => a - b), widths: [...widths].sort((a, b) => a - b) }
 }
@@ -239,6 +291,10 @@ interface Pass {
 	scales: number[]
 	highlightThick: string
 	characters: boolean
+	/** The SHIPPED default is false. Every pass used to hard-code true, so the
+	 *  default motion state — which is what draws the focus pulse outside the
+	 *  row — was measured in none of the cells. */
+	reduceMotion: boolean
 }
 const passesFor = (css: string): Pass[] => [
 	{
@@ -247,6 +303,7 @@ const passesFor = (css: string): Pass[] => [
 		scales: SCALES,
 		highlightThick: 'medium',
 		characters: false,
+		reduceMotion: true,
 	},
 	{
 		label: 'thick ring',
@@ -263,6 +320,7 @@ const passesFor = (css: string): Pass[] => [
 		scales: [125, 200],
 		highlightThick: 'thick',
 		characters: false,
+		reduceMotion: true,
 	},
 	{
 		// Every breakpoint, at N and at N+1. Three of the defects found by review
@@ -281,6 +339,7 @@ const passesFor = (css: string): Pass[] => [
 		scales: [125, 200],
 		highlightThick: 'thick',
 		characters: false,
+		reduceMotion: true,
 	},
 	{
 		label: 'cast names',
@@ -295,6 +354,7 @@ const passesFor = (css: string): Pass[] => [
 		scales: [125, 200],
 		highlightThick: 'medium',
 		characters: true,
+		reduceMotion: true,
 	},
 ]
 
@@ -445,17 +505,53 @@ const main = async () => {
 				for (const scale of pass.scales) {
 					await page.setViewportSize({ width: w, height: h })
 					await page.goto(url, { waitUntil: 'load' })
-					await page.evaluate(
-						(s) => localStorage.setItem('oddball-save-v1', s),
-						SETTINGS(scale, pass.highlightThick, pass.characters),
-					)
 
 					for (const screen of SCREENS) {
+						// The save is written per screen, not once per viewport: the rack
+						// needs a seeded round and the others must not have one, or the
+						// title screen offers Continue and the row indices shift.
+						await page.evaluate(
+							(s) => localStorage.setItem('oddball-save-v1', s),
+							SETTINGS(
+								scale,
+								pass.highlightThick,
+								pass.characters,
+								pass.reduceMotion,
+								screen === 'rack' ? RACK_ROUND : undefined,
+							),
+						)
 						// Reload per screen rather than navigating between them: the flow
 						// has no universal "back", and a wrong click would leave the
 						// harness measuring a screen it did not mean to measure.
 						await page.reload({ waitUntil: 'load' })
-						if (screen === 'overlay') {
+						if (screen === 'rack') {
+							// Continue resumes the seeded round straight onto the shot rack.
+							const went = await page.evaluate(() => {
+								const row = [...document.querySelectorAll('.scan-item')].find((r) =>
+									/continue/i.test(r.textContent ?? ''),
+								)
+								row?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+								return row !== undefined
+							})
+							// Poll rather than sleep. A fixed 600ms wait resumed the round on
+							// most viewports and not on 844x325, which is a flake, and a flake
+							// in a gate gets the gate disabled.
+							let name = ''
+							for (let i = 0; i < 40 && name !== 'The Staircase'; i++) {
+								await page.waitForTimeout(50)
+								name = await page.evaluate(
+									() => document.querySelector('.header-screen')?.textContent?.trim() ?? '',
+								)
+							}
+							// The header name is the whole point of this screen, so assert we
+							// actually got the long one rather than measuring the title again.
+							if (!went || name !== 'The Staircase') {
+								console.log(
+									`layout-check: could not reach the seeded round at ${w}x${h} @${scale}% (header read "${name}")`,
+								)
+								process.exit(1)
+							}
+						} else if (screen === 'overlay') {
 							// Opened with the Pause button, not the 3 s hold. Both land on
 							// the same handler and build the same list — the self-test above
 							// asserts that, once, rather than this loop assuming it — and the
@@ -593,6 +689,12 @@ const main = async () => {
 									pauseMinHeight: pause === null ? 'none' : getComputedStyle(pause).minHeight,
 									docHOverflow:
 										document.documentElement.scrollWidth - document.documentElement.clientWidth,
+									// The vertical twin. There was a horizontal detector and no
+									// vertical one, so a footer sitting outside the viewport on a
+									// screen this harness measures went unreported — and `body` is
+									// `overflow: hidden`, so a player cannot scroll it back.
+									docVOverflow:
+										document.documentElement.scrollHeight - document.documentElement.clientHeight,
 								}
 							},
 							screen === 'overlay' ? '.overlay-panel' : '.scan-panel',
@@ -604,7 +706,8 @@ const main = async () => {
 							cell.hClipped.length > 0 ||
 							cell.ringCut.length > 0 ||
 							cell.pauseOutside > 0 ||
-							cell.docHOverflow > 0
+							cell.docHOverflow > 0 ||
+							cell.docVOverflow > 0
 						if (failed) bad.push({ w, h, scale, screen, pass: pass.label, ...cell })
 					}
 				}
@@ -629,6 +732,7 @@ const main = async () => {
 			parts.push(`highlight ring cut: ${c.ringCut.map((x) => `${x.id} by ${x.by}px`).join(', ')}`)
 		if (c.pauseOutside > 0) parts.push(`Pause ${c.pauseOutside}px outside the viewport`)
 		if (c.docHOverflow > 0) parts.push(`document overflows ${c.docHOverflow}px horizontally`)
+		if (c.docVOverflow > 0) parts.push(`document overflows ${c.docVOverflow}px vertically`)
 		console.log(`FAIL  ${c.w}x${c.h} @${c.scale}% ${c.screen} [${c.pass}] — ${parts.join('; ')}`)
 	}
 	if (bad.length > 0) {

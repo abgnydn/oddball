@@ -28,7 +28,7 @@
    .scan-list      vertical scannable list container
    .scan-item      one big scannable row/button (min-height 64px, dropping to
                    56px at or under 700px of viewport height or 560px of width,
-                   and 44px at or under 400px of height or 360px of width — see
+                   and 44px at or under 480px of height or 360px of width — see
                    the notes there). Its inline padding is capped in px so the
                    longest label still fits when text scales and the panel does
                    not.
@@ -274,12 +274,34 @@ body {
 .header-title {
 	font-size: min(1.3rem, 24px);
 	font-weight: 800;
+	/* Never shrinks, never wraps — the screen name beside it absorbs the whole
+	   squeeze, the way .footer-mode does for .footer-pause. Both header items
+	   were `flex: 0 1 auto`, so flex shrank them in proportion and the TITLE was
+	   the one that wrapped: "Odd Ball" went to two lines at 320px and 200% text
+	   and took the header from 75px to 108.6px. Putting nowrap on the screen
+	   name alone did not help, because the screen name was not what wrapped. */
+	flex: 0 0 auto;
+	white-space: nowrap;
 }
 
 .header-screen {
+	flex: 0 1 auto;
 	font-size: min(1.1rem, 21px);
 	font-weight: 600;
 	color: var(--muted);
+	/* One line, ellipsised — the same treatment .footer-focus gets, for the same
+	   failure. This was the only bar in the layout with no yield rule, and two
+	   of the six holes on the FIRST course have names long enough to wrap it:
+	   "The Staircase" and "Home Stretch". At 320x568 (iPhone SE) at 200% text
+	   that took the header from 75px to 108.6px and put the Pause button 11.4px
+	   below the fold, with the document overflowing 27px and `body` set to
+	   `overflow: hidden` so a player could not scroll it back. The screen name
+	   is also spoken on entry and shown in the caption, so an ellipsis costs
+	   nothing a player cannot get another way; the Pause button is not. */
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* ---------- main / canvas ---------- */
@@ -376,9 +398,16 @@ body {
 
    Placed here, immediately after the max-width:560 stack and BEFORE the
    short-viewport tiers, on purpose. `.canvas-wrap`'s flex share is set with
-   !important in three places; on a screen that is both mid-width and short the
-   later max-height:400 rule has to win, and document order is what decides
-   that. */
+   !important in three places, and on a screen that is both mid-width and short
+   the max-height rule has to win.
+   Document order is NOT what decides that. Between two `!important`
+   declarations the cascade compares specificity first, and the rules below are
+   `:root[data-font='125'] .canvas-wrap` (0,3,0) against a bare `.canvas-wrap`
+   (0,1,0) — so this block used to beat the short-screen rule at every text
+   scale from 125% up, including the shipped default, and the 20% cap it was
+   supposed to yield to never applied. Nothing clipped as a result, which is why
+   1260 cells reported ALL PASS: the harness measures outcomes, not which rule
+   won. The short-screen rule now carries matching specificity. */
 @media (max-width: 900px) {
 	:root[data-font='125'] .main,
 	:root[data-font='150'] .main,
@@ -506,6 +535,19 @@ body {
 
 	/* Only at large print — at ordinary sizes the legend costs one short line
 	   and is worth keeping. */
+	:root[data-font='175'] .footer-legend,
+	:root[data-font='200'] .footer-legend {
+		display: none;
+	}
+}
+
+/* The same, keyed on WIDTH rather than height. At large print the legend wraps
+   to several lines on a narrow screen whatever the height, and the rule above
+   only fires at 700px or shorter — so a 320x701 window showed it and the footer
+   grew until the document overflowed 6px, with `body` set to `overflow: hidden`
+   so nothing could scroll it back. Found one pixel past a tier boundary, which
+   is the third time that has happened in this file. */
+@media (max-width: 560px) {
 	:root[data-font='175'] .footer-legend,
 	:root[data-font='200'] .footer-legend {
 		display: none;
@@ -667,7 +709,7 @@ body {
 		box-shadow: 0 0 0 0 color-mix(in srgb, var(--focus-ring) 50%, transparent);
 	}
 	50% {
-		box-shadow: 0 0 0 calc(var(--hl-w) + 6px)
+		box-shadow: 0 0 0 var(--hl-reach)
 			color-mix(in srgb, var(--focus-ring) 50%, transparent);
 	}
 }
@@ -838,7 +880,15 @@ body {
 	   to hold a row. A raised .main floor alone did not work here: it pushed the
 	   footer down and put the Pause button 9.7px below the fold, which is the
 	   same trade this file has now got wrong twice. Take it from the band. */
-	.canvas-wrap {
+	/* `:root[data-font]` for exact specificity parity with the mid-width block
+	   above, which is `:root[data-font='125'] .canvas-wrap` — (0,3,0). A bare
+	   `.canvas-wrap` is (0,1,0) and a `:root .canvas-wrap` is (0,2,0); both lose,
+	   because between two `!important` declarations specificity is compared
+	   before document order. With parity, order decides, and this block is
+	   later. `[data-font]` always matches: hud.ts sets it on every settings
+	   apply. Verified by measuring the computed flex, not by reading the file —
+	   the first attempt at this fix looked right and changed nothing. */
+	:root[data-font] .canvas-wrap {
 		flex: 0 0 20% !important;
 	}
 }
@@ -848,7 +898,7 @@ body {
    280px is the Galaxy Fold cover screen, so this is a real device, not a
    corner. */
 @media (max-width: 360px) {
-	/* Every value here is at least as tight as the 400px-height tier above, so
+	/* Every value here is at least as tight as the 480px-height tier above, so
 	   whichever wins on document order the result is still small enough. That is
 	   deliberate: three defects in this file have come from one tier quietly
 	   beating another, and ordering is a fact about the file that is easy to

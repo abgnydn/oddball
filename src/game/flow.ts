@@ -877,7 +877,9 @@ export function createFlow(deps: Deps): Flow {
 				else if (e.kind === 'splash') sfx.play('splash')
 				else if (e.kind === 'land') sfx.play('roll')
 				else if (e.kind === 'holed') {
-					if (id === 'pancake') sfx.play('tap') // Penny taps once. That means yes.
+					// Penny's tap is a character's cheer (CAST.md), so it follows the
+					// cast setting. It used to fire unconditionally.
+					if (id === 'pancake' && settings.characters) sfx.play('tap')
 					sfx.play('holed')
 				}
 			},

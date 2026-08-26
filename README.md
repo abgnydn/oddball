@@ -14,6 +14,12 @@ DESIGN.md lists every departure, and itemises their §10 shipping checklist item
 by item — including the item §10 calls the only test that counts, which is not
 ticked.
 
+**Odd Ball is not a NARBE House project.** It is not in their library, it has
+not been submitted, and nobody there has reviewed or endorsed it. It is one
+person's build against their published contract. Their §13 asks that forks not
+imply affiliation, and naming them three times in the paragraph above comes
+close enough to that line to be worth saying plainly.
+
 ## Playing
 
 - **Space** — next choice. **Enter** — pick it. **Hold Enter** — menu (it stays
@@ -45,8 +51,7 @@ ticked.
   64 px guidance.
 - Two six-hole courses, two-player pass-and-play, a practice range, and a
   **Make a Hole** editor (pick length, hills, water, sand, wind — par comes
-  from simulating your hole, and you can save a bookful — `MAX_CUSTOM_HOLES` in
-  `src/tuning.ts` sets how many).
+  from simulating your hole, and you can save ten).
 
 **Play it at [oddball.pages.dev](https://oddball.pages.dev)** — or run it
 locally with the commands below. Speech uses the browser's built-in voices
@@ -77,7 +82,9 @@ character.
 No shape is best everywhere. The four purposeful shapes each have at least one
 hole where they are part of the best line. Egg and Boing are gambles by design:
 the harness checks their lucky tail beats the careful line on at least one hole,
-not that they are best anywhere. Re-checked on every change.
+not that they are best anywhere. `pnpm holes` asserts both, and it runs when
+someone types it — there is no CI, and the git hooks run biome and gitleaks
+only.
 
 ## Development
 
@@ -99,12 +106,13 @@ pnpm mutate         # breaks the shipped code one edit at a time; each must go r
 pnpm format         # biome, writes
 pnpm preview        # serve the built dist
 pnpm build
-pnpm deploy          # Cloudflare Pages; publishes dist/ to oddball.pages.dev
+pnpm deploy          # build + layout-check, then publish dist/ to oddball.pages.dev
 ```
 
 TypeScript + Vite, canvas-2D renderer, Web Speech API, WebAudio. No runtime
 dependencies. The physics is deterministic (seeded); the harnesses above are
-the safety net — pars come from simulation, with no hand-set values.
+the safety net. Pars are literals in `src/tuning.ts`, and `pnpm holes` fails if
+any of them differs from what simulating the hole produces.
 
 ## Sound credits
 

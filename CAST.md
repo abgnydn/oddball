@@ -1,8 +1,7 @@
 # The cast (Layer 1.5)
 
 > **This layer has not been read by the switch-access community it is written
-> for, and it went live in the hosted build anyway.** The honest statement is
-> that it shipped unreviewed. It is now a setting, **off by default** (Settings
+> for, and it went live in the hosted build anyway. It shipped unreviewed.** It is now a setting, **off by default** (Settings
 > → Character names), which is the flag that should have been there first; that
 > does not convert "shipped unreviewed" into "reviewed". The review still comes
 > before any submission to the NARBE library, and it decides whether the layer
@@ -39,30 +38,37 @@ the narrator is matter-of-fact rather than admiring. That is a compensation
 framing, and it is contested; it is written here as the assumption under review,
 not as a settled principle. Two of the six shapes are left unmapped.
 
-The game's strategy statement is the disability-positive statement: no shape is
-ranked above another, and each purposeful shape has a hole where it is the right
-choice. The gamble shapes win by luck by design; the harness asserts only that.
+The four purposeful shapes are not ranked against each other; each has a hole
+where it is the right choice. The two gamble shapes are never the sober best
+line, by design — they win by luck. `pnpm holes` asserts both.
 
 ## The six
 
-| Shape | Name | Mapping | Mechanical identity |
-|---|---|---|---|
-| Sphere | **Dot** | Blind — hears everything | Homing rollout: after her bounces settle, her roll bends toward the cup's beeper (bounded — see below). NEW sim mechanic. |
-| Cube | **Brick** | Deaf — the wind can't trick him | Lowest windSens + dead stop. Already true in tuning; zero sim change. |
-| Pancake | **Penny** | Nonspeaking — taps once for yes | High lob, lands soft, stays put. Narrative only: when Penny holes out, one soft tap (sfx) before the piano note; the narrator waits for it. |
-| Disc | **Glide** | Doesn't walk — flies | Longest reach, wind is their challenge. Aspirational mapping, no sim change. |
-| Star | **Boing** | none — pure joy | Chaos bounces. Deliberately unmapped. |
-| Egg | **Egg** | none — pure luck | Huge variance. Deliberately unmapped, comic relief. |
+The middle column says how each character is written. It is deliberately not
+phrased as "can't X, so they're great at Y"; the right-hand column says where
+each mechanic came from, and for three of the four it existed first and the
+character was written onto it afterwards.
 
-Penny's blurb changed twice. The published build says "Penny doesn't talk. She
-taps once for yes. She flies high, lands soft, and stays right there." — it
-opens on the deficit, which this file's own rule forbids. The rewrite put the
-ability first, but ended "she taps once for yes — she says what she needs to".
-That clause was cut before it reached anyone: it is a judgement that a one-bit
-yes/no output is sufficient communication, made on a nonspeaking character's
-behalf and spoken aloud to an audience that includes nonspeaking players. AAC
-practice starts from the opposite premise. What ships is "Penny flies high,
-lands soft, and stays right there. She taps once for yes." and nothing after.
+| Shape | Name | Written as | Where the mechanic came from |
+|---|---|---|---|
+| Sphere | **Dot** | blind | Homing rollout: after her bounces settle, her roll bends toward the cup's beeper (bounded — see below). NEW sim mechanic, written for her. The only one. |
+| Cube | **Brick** | deaf | Lowest windSens + dead stop, already in tuning before the character existed. The link between deafness and wind is a pun, not a mapping. |
+| Pancake | **Penny** | nonspeaking | High lob, lands soft, stays put. Narrative only: with the cast layer on, one soft tap (sfx) when she holes out, before the piano note. |
+| Disc | **Glide** | not walking | Longest reach; wind is their challenge. Already in tuning; no sim change. |
+| Star | **Boing** | no mapping | Chaos bounces. Deliberately unmapped. |
+| Egg | **Egg** | no mapping | Huge variance. Deliberately unmapped, comic relief. |
+
+The one disability the game wrote code for is Dot's, and the code turns it into
+a targeting advantage. That is the most criticisable thing in this file, and it
+belongs here rather than left to be found.
+
+Penny's blurb opens on the deficit in the published build — "Penny doesn't
+talk. She taps once for yes. She flies high, lands soft, and stays right
+there." — which this file's own rule forbids. What ships next puts the ability
+first and stops at the tap: "Penny flies high, lands soft, and stays right
+there. She taps once for yes." The narrator's hole-out line stops there too. It
+used to add "That means yes", which is a hearing player being told what a
+nonspeaking character's one output means. That is not the game's to decide.
 
 ## Rack blurbs (spoken on focus with the cast layer on)
 
@@ -104,7 +110,8 @@ is off — same facts, no persona, no pronouns.
 
 ## Narration rules
 
-- The narrator describes ability matter-of-factly ("Brick doesn't mind the wind"),
+- The narrator describes ability matter-of-factly ("Brick lands, and he stays.
+  Wind moves him less than any other shape." — `tuning.ts`),
   never as overcoming-tragedy framing, never "despite."
 - Penny's celebrations are hers: the tap is the cheer. The narrator says
   "Penny taps once. That means yes."
@@ -118,10 +125,9 @@ is off — same facts, no persona, no pronouns.
 
 ## Before this goes to the NARBE library
 
-This layer specifically — characters with disabilities, written for a disability
-community — gets shown to the NARBE House community (their Discord) for a read
-BEFORE any submission to their library; that step does not get skipped. They
-are the qualified reviewers of whether it lands.
+This layer needs to be read by disabled switch users before it goes anywhere
+near the NARBE library. The NARBE House Discord is the obvious place to ask.
+That ask has not been made, and nobody there has agreed to do it.
 
 It should have been shown to them before it went live on the public build, and
 it was not. It is now behind a setting that defaults off, which is what should

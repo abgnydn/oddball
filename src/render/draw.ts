@@ -62,6 +62,14 @@ const PENNY_TAP_S = 0.34
 const reduceMotionNow = (): boolean =>
 	typeof document !== 'undefined' && document.documentElement.dataset.reduceMotion === 'true'
 
+/** The cast layer (Settings -> Character names), read off <html> the same way
+ *  reduce-motion is. Penny's tap-bounce is hers, so with the cast off it does
+ *  not happen. This was the fifth ungated cast element found, and the first
+ *  that neither of menu-check's greps could see: it is an animation, not a
+ *  string. */
+const charactersNow = (): boolean =>
+	typeof document !== 'undefined' && document.documentElement.dataset.characters === 'true'
+
 // ---------- colors from CSS custom properties ----------
 
 interface Colors {
@@ -1045,7 +1053,7 @@ export const createRenderer = (): Renderer => {
 		const holedNow = s.holedT !== null && simT >= s.holedT
 		const after = Math.max(0, s.elapsed - PRE_S - s.duration)
 		let hop = 0
-		if (after > 0 && s.outcome.holed && s.shape === 'pancake') {
+		if (after > 0 && s.outcome.holed && s.shape === 'pancake' && charactersNow()) {
 			// Penny's single tap-bounce: her cheer, inside the still beat
 			const u = (after - PENNY_TAP_AT) / PENNY_TAP_S
 			if (u >= 0 && u <= 1) hop = Math.sin(Math.PI * u) * 9

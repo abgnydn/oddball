@@ -133,7 +133,16 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 		setTheme() {},
 	}
 
-	const sfx: SFX = { play() {}, tone() {}, setEnabled() {} }
+	// Recording, not silent: Penny's tap is a cast element delivered as a SOUND,
+	// so the only way to assert it follows the setting is to watch what plays.
+	const played: string[] = []
+	const sfx: SFX = {
+		play(name: string) {
+			played.push(name)
+		},
+		tone() {},
+		setEnabled() {},
+	}
 
 	const save: SaveAPI = {
 		load: () => stored,
@@ -189,6 +198,7 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 		flow,
 		scanner,
 		machine,
+		played,
 		pickList: (id: string) => pick(id, h.listIds),
 		pickOverlay: (id: string) => pick(id, h.overlayIds),
 	}
@@ -947,6 +957,54 @@ const castSourceChecks = () => {
 	)
 }
 
+// Two cast elements that are NOT strings, so neither grep above can see them.
+// The tap is a sound effect and a tap-bounce animation; it fired with the cast
+// layer off, and it was found by reading the code rather than by any check.
+const castNonTextChecks = () => {
+	// Source-level, like the cast greps, because the behavioural route needs a
+	// pancake to hole out and a check that only asserts "no tap yet" is true for
+	// the wrong reason. Both non-text cast elements must sit behind the setting.
+	const flowSrc = readFileSync(join(SRC, 'game', 'flow.ts'), 'utf8')
+	const tapLine = flowSrc.split('\n').find((l) => l.includes("sfx.play('tap')")) ?? ''
+	check(
+		"Penny's tap sound is behind the cast setting",
+		tapLine.includes('settings.characters'),
+		tapLine.trim() || '(no tap call found)',
+	)
+	const drawSrc = readFileSync(join(SRC, 'render', 'draw.ts'), 'utf8')
+	const hopLine = drawSrc.split('\n').find((l) => l.includes("s.shape === 'pancake'")) ?? ''
+	check(
+		"Penny's tap-bounce is behind the cast setting",
+		hopLine.includes('charactersNow()'),
+		hopLine.trim() || '(no tap-bounce found)',
+	)
+	// ...and the grep is worthless if the call moved, so prove both were found.
+	check(
+		'both non-text cast elements were located in the source',
+		tapLine !== '' && hopLine !== '',
+		`tap=${tapLine !== ''} hop=${hopLine !== ''}`,
+	)
+	// The narrator's hole-out line for Penny must not translate the tap. It used
+	// to say "That means yes." — a hearing player being told what a nonspeaking
+	// character's single output means.
+	const holedOut: StrikeOutcome = {
+		points: [],
+		events: [],
+		end: { x: 100, lie: 'green' },
+		holed: true,
+		water: false,
+		carry: 100,
+		total: 100,
+	}
+	const anyHole = COURSES[0]?.holes[0] as HoleSpec
+	const line = L.narrate(holedOut, 'pancake', anyHole, true)
+	check(
+		"the hole-out line does not gloss Penny's tap",
+		!/means/i.test(line) && line.includes('taps once'),
+		line,
+	)
+}
+
 // ---------- 5b. the cast layer is all-or-nothing ----------
 
 // Settings.characters is off by default, so the DEFAULT experience is the one
@@ -1072,6 +1130,7 @@ const main = async () => {
 	castDocQuoteChecks()
 	castSourceChecks()
 	castLayerChecks()
+	castNonTextChecks()
 	focusOrderChecks()
 
 	for (const [name, ok, detail] of results) {

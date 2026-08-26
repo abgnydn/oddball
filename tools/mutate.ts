@@ -27,6 +27,7 @@ const TT = 'src/speech/tts.ts'
 const LN = 'src/game/lines.ts'
 // The docs are shipped artifacts too — they go up in the same push, and three of
 // the defects this project has had to fix were sentences, not code.
+const FL2 = 'src/game/flow.ts'
 const CAST = 'CAST.md'
 const DESIGN = 'DESIGN.md'
 
@@ -292,6 +293,29 @@ MUTATIONS.push(
 		edits: [
 			[CAST, '| Disc | **Glide**', '\nA paragraph wedged between two rows.\n\n| Disc | **Glide**'],
 		],
+	},
+)
+
+MUTATIONS.push(
+	{
+		// The fifth cast leak. A sound, so neither grep sees it — this mutation
+		// is the only thing standing between it and a silent return.
+		name: "flow: Penny's tap sound ignores the cast setting",
+		harness: 'menu-check',
+		edits: [
+			[
+				FL2,
+				"if (id === 'pancake' && settings.characters) sfx.play('tap')",
+				"if (id === 'pancake') sfx.play('tap')",
+			],
+		],
+	},
+	{
+		// The narrator interpreting a nonspeaking character's one output for the
+		// hearing player. Cut for the same reason the blurb clause was cut.
+		name: 'lines: the narrator explains what a tap means',
+		harness: 'menu-check',
+		edits: [[LN, "pancake: 'Penny taps once.',", "pancake: 'Penny taps once. That means yes.',"]],
 	},
 )
 
