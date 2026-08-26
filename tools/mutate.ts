@@ -142,7 +142,7 @@ const MUTATIONS: Mutation[] = [
 		edits: [
 			[
 				FL,
-				"\t\t\t// The range is gameplay, so §12's scannable pause applies here too.\n\t\t\t// It was in the round rack only, which made the \"no screen needs a\n\t\t\t// hold\" claim false for everyone who cannot sustain one — in the mode\n\t\t\t// most likely to be someone's FIRST screen.\n\t\t\t{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeak },\n",
+				"\t\t\t// The range is gameplay, so §12's scannable pause applies here too.\n\t\t\t// It was in the round rack only, which made the \"no screen needs a\n\t\t\t// hold\" claim false for everyone who cannot sustain one — in the mode\n\t\t\t// most likely to be someone's FIRST screen.\n\t\t\t{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeakNoRound },\n",
 				'',
 			],
 		],
@@ -264,6 +264,30 @@ try {
 	const e = err as { status?: number }
 	if (e.status !== undefined) throw err // git ran and said no
 	console.error('refusing to run: could not ask git whether the tree is clean')
+	process.exit(1)
+}
+
+// Resolve every anchor BEFORE running anything. Two reasons, both learned the
+// hard way. A stale anchor used to abort the battery partway through, throwing
+// away the minutes of harness runs that had already passed. And an anchor that
+// matches TWICE is worse than one that matches zero times: `String.replace`
+// silently takes the first hit, so a mutation aimed at the practice range's
+// Menu row once deleted the round rack's byte-identical one instead, and the
+// mutation "passed" while testing something else entirely.
+const anchorErrors: string[] = []
+for (const m of MUTATIONS) {
+	for (const [f, old] of m.edits) {
+		const n = readFileSync(join(REPO, f), 'utf8').split(old).length - 1
+		if (n !== 1) {
+			anchorErrors.push(`${n === 0 ? 'missing' : `${n} matches`} in ${f} for "${m.name}"`)
+		}
+	}
+}
+if (anchorErrors.length > 0) {
+	console.error(
+		'anchors do not resolve to exactly one site each — the source moved under them:\n' +
+			anchorErrors.map((e) => `  ${e}`).join('\n'),
+	)
 	process.exit(1)
 }
 
