@@ -2,7 +2,7 @@
 // common words, whole yards. The narrator speaks about the cast matter-of-factly
 // — ability first, never pity, never "despite" (CAST.md).
 
-import { MAX_STROKES, SHAPES, yd } from '../tuning'
+import { MAX_CUSTOM_HOLES, MAX_STROKES, SHAPES, yd } from '../tuning'
 import type { BallState, HoleSpec, ShapeId, StrikeOutcome, Surface } from '../types'
 
 export const GAME_TITLE = 'Odd Ball'
@@ -45,6 +45,10 @@ export const MENU = {
 	playAgainSpeak: 'Play again. Start a new round.',
 	openMenu: 'Menu',
 	openMenuSpeak: 'Menu. Settings, a new round, or go back.',
+	// The range has no round, so openMenu() omits New round. Reusing the rack's
+	// line there told a player who cannot see the screen that an option existed
+	// which did not — in a game whose whole interface is speech.
+	openMenuSpeakNoRound: 'Menu. Settings, or go back.',
 	exit: 'Exit to menu',
 	exitSpeak: 'Exit. Go back to the main menu.',
 	resume: 'Keep playing',
@@ -122,12 +126,30 @@ export const whereAmI = (
  *  — and the yardage used to be at the END, which meant the one number that
  *  decides the shot was the one part they never reached. The blurb is flavour
  *  and can be cut off; the distance cannot. */
-export const shapeFocus = (id: ShapeId, reachM: number): string =>
-	`${SHAPES[id].name}. Goes about ${yd(reachM)} yards. ${SHAPES[id].blurb}`
+/** Spoken text says "ten", not "10" — §9 asks for short sentences and common
+ *  words, and a synthesiser reads a digit inconsistently across voices. */
+const numWord = (n: number): string =>
+	['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] ??
+	String(n)
 
-export const shapeConfirm = (id: ShapeId): string => `${SHAPES[id].name}. Here comes the swing!`
+/** The cast layer is a setting, off by default (Settings.characters). With it
+ *  off a shape is described by what it does and nothing else; with it on the
+ *  same shape has a name and a voice. Every spoken line that mentions a shape
+ *  goes through here, so the two modes can never half-apply — a plain blurb
+ *  under a character name would read as a bug, not a style. */
+export const shapeName = (id: ShapeId, characters: boolean): string =>
+	characters ? SHAPES[id].name : SHAPES[id].plainName
 
-/** Character-flavored hole-out lines (CAST.md). */
+export const shapeFocus = (id: ShapeId, reachM: number, characters: boolean): string =>
+	`${shapeName(id, characters)}. Goes about ${yd(reachM)} yards. ${
+		characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb
+	}`
+
+export const shapeConfirm = (id: ShapeId, characters: boolean): string =>
+	`${shapeName(id, characters)}. Here comes the swing!`
+
+/** Character-flavored hole-out lines (CAST.md). Only spoken when characters
+ *  are on; otherwise the hole-out line ends after "In the cup!". */
 const HOLED_FLAVOR: Record<ShapeId, string> = {
 	sphere: 'Dot heard the beeper the whole way.',
 	cube: 'Brick is very pleased.',
@@ -137,19 +159,25 @@ const HOLED_FLAVOR: Record<ShapeId, string> = {
 	pancake: 'Penny taps once. That means yes.',
 }
 
-export const narrate = (out: StrikeOutcome, id: ShapeId, hole: HoleSpec): string => {
-	const name = SHAPES[id].name
+export const narrate = (
+	out: StrikeOutcome,
+	id: ShapeId,
+	hole: HoleSpec,
+	characters: boolean,
+): string => {
+	const name = shapeName(id, characters)
 	if (out.water)
 		return `Splash! ${name} landed in the water. The ball goes back to where it was. The shot still counts.`
-	if (out.holed) return `In the cup! ${HOLED_FLAVOR[id]}`
+	if (out.holed) return characters ? `In the cup! ${HOLED_FLAVOR[id]}` : 'In the cup!'
 	const remainingYd = yd(Math.abs(hole.cupX - out.end.x))
 	const remaining = yds(remainingYd)
 	const bounces = out.events.filter((e) => e.kind === 'bounce').length
 	let color = ''
 	if (out.end.lie === 'sand') color = `${name} landed in the sand. `
 	else if (bounces >= 3)
-		// "Boing!" belongs to the star character — neutral wording for everyone else
-		color = id === 'star' ? `Boing! ${bounces} bounces! ` : `Bounce, bounce, bounce! `
+		// "Boing!" belongs to the star character — neutral wording for everyone
+		// else, and for everyone when the cast layer is off
+		color = characters && id === 'star' ? `Boing! ${bounces} bounces! ` : `Bounce, bounce, bounce! `
 	else if (out.total - out.carry < 2 && out.total > 20)
 		color = `${name} landed and stayed right there. `
 	const close = remainingYd <= 10 ? ' So close!' : ''
@@ -190,8 +218,12 @@ export const SWING_LINE = 'Whoosh!'
 
 // ---------- courses, players, range, editor ----------
 
+/** Same rule as shapeFocus, and the same defect until a lens found it one
+ *  function down: the number a player is deciding on goes BEFORE the flavour,
+ *  because a focus label does not hold the scan timer and the tail is not heard
+ *  at the default rung. This one ran ~5.6 s with the score last. */
 export const courseFocus = (name: string, blurb: string, best?: number): string =>
-	`${name}. ${blurb}${best !== undefined ? ` Your best here: ${best} shots.` : ''}`
+	`${name}.${best !== undefined ? ` Your best here: ${best} shots.` : ''} ${blurb}`
 
 export const playerTurn = (playerNo: number): string => `Player ${playerNo}, your turn!`
 
@@ -233,7 +265,7 @@ export const editorDescribe = (parts: string[]): string => `Your hole: ${parts.j
 
 export const ESTIMATING = 'Getting your hole ready. One moment.'
 export const holeSaved = (name: string): string => `Saved! ${name} is in My Holes now.`
-export const BOOK_FULL = 'You have ten holes already. Delete one first.'
+export const BOOK_FULL = `You have ${numWord(MAX_CUSTOM_HOLES)} holes already. Delete one first.`
 export const holeDeleted = (name: string): string => `${name} is gone.`
 export const customIntro = (hole: HoleSpec): string =>
 	`${hole.name}. ${yd(hole.length)} yards. Par ${hole.par}. ${hole.windText} ${hole.intro}`
@@ -253,6 +285,7 @@ export const SETTINGS_LABELS = {
 	motion: 'Animations',
 	tone: 'Flying sound',
 	dwell: 'Hover to pick',
+	characters: 'Character names',
 }
 
 export const settingValueSpeak: Record<string, (v: string) => string> = {
@@ -277,4 +310,8 @@ export const settingValueSpeak: Record<string, (v: string) => string> = {
 		v === 'off'
 			? `Hover to pick: ${v}. Pointing at a button does not choose it.`
 			: `Hover to pick: ${v}. Point at a button and hold still to choose it.`,
+	characters: (v) =>
+		v.startsWith('on')
+			? `Character names ${v}. Each shape has a name and a story.`
+			: `Character names ${v}. Each shape is named for what it is.`,
 }

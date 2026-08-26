@@ -6,8 +6,10 @@ Shape choice is the entire skill. The game takes no timing, aiming or reflex inp
 
 Target platform: web, standalone (Vite static build). Audience: switch users
 (1–2 inputs) and low vision. Text is short sentences and common words. Speech
-is the interface and a caption is read at a glance. Built to the NARBE House
-developer guide (narbehouse.github.io/developer-guide.html) constraints.
+is the interface and a caption is read at a glance. Built **against** the NARBE
+House developer guide (narbehouse.github.io/developer-guide.html) and the input
+contract it names — against, not to: the departures table below lists every
+place this build does not comply.
 
 ## Input grammar
 
@@ -64,9 +66,9 @@ below lists every place that shows.
   app having died. Neither behaviour comes from the contract: `ACCESSIBILITY.md`
   does not specify wrap, and no shared module moves a highlight to depart from —
   `scan-manager.js` intercepts keys and owns the settings, but queries no
-  elements, manages no focus and tracks no highlight index. §11 makes the
-  related point about the hub's own modules. This is an addition, not a
-  departure.
+  elements, manages no focus and tracks no highlight index. §4 says so
+  directly — `NarbeScanManager` "owns two values and no others", the scan
+  interval and the 250 ms debounce. This is an addition, not a departure.
 - Scan order is fixed top-to-bottom; never reordered mid-session.
 - Returning from a submenu restores the highlight to the item that opened it.
 - **Pointer (optional but required to work)**: click an item = select it.
@@ -82,6 +84,8 @@ modules — so some contract items are met differently:
 
 | `ACCESSIBILITY.md` says | This build |
 | --- | --- |
+| §1: the player "is not a child, and should not be talked to like one" — "the access is what is adapted, not the dignity" | the cast layer (CAST.md) writes the shapes as characters with feelings: "Brick is very pleased", "Boing bounces with joy". Whether that reads as warmth or as talking down is a call this build is not entitled to make for a player it has never met, so it is now a **setting, off by default**. The shipped reading states what a shape does and stops: "Cube. Goes about 93 yards. It lands and it stays." Turning the cast on is the player's choice. The setting does not settle the question — it just stops the game answering it for them |
+| §1: give the player "a way to choose how hard the game pushes back", and a no-fail mode is "*the* version" for some players | no difficulty setting. Golf has no fail state (eight strokes and the ball rests), and the practice range is unscored and endless — but neither is a difficulty the player chose. Not done |
 | §4: `scan-manager.js` enforces a 250 ms global cooldown — "You do not need to write your own debounce, and you should not" | its own 250 ms cooldown: per key for switch presses, and a separate one on pointer selects (click and dwell). There is no `NarbeScanManager` to defer to |
 | §4: the convention is ~3 s to scan backwards and ~5 s to pause, "and new games should match it" | 3 s for both. The backward hold matches; the menu hold does not |
 | §5: use `SafeAudio`, never the Web Audio API (an `AudioContext` can take down the Electron renderer) | WebAudio, for the flight tone and the cup beeper. This build is web-only, so the Electron failure mode does not apply here — but it would if it were ever bundled |
@@ -93,15 +97,16 @@ modules — so some contract items are met differently:
 | §7/§10: a two-step **Reset Progress** item | none. Saved holes delete individually (two-step); there is no wipe-everything item |
 | §6/§10: `postMessage({ action: 'focusBackButton' })` on Exit Game | not sent. This build has no Exit Game — "Exit to menu" returns to its own title, still inside the frame. It would need one to go in the hub |
 | §5/§10: Auto Scan and Scan Speed come from `NarbeScanManager`, so "a player configures their access once, not twenty times" | its own copies, saved under `oddball-save-v1`. Someone who set their scan speed in the hub sets it again here |
-| §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan, and the game-specific rows sit after both rather than before |
+| §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan. Most game-specific rows sit after both rather than before; one — Character names — sits with the speech rows instead, because it changes what speech says and nothing else |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled here (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
-| §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three separate ways.** (1) The on-screen Pause button never reaches 64 px: it is `min-height: 2.2rem`, measured 38 px at 100 % text and 44.6 px at the shipped 125 % default, on every viewport, tall or short. It only clears 64 px at 200 %. (2) A scan row is 64 px only above 700 px of viewport height; at or under 700 px its floor drops to 56 px, which includes an iPad Mini or a 768 pt iPad in **landscape**, where browser chrome puts the viewport under 700 px. (3) At or under 400 px of height the row floor drops again to 44 px and the portrait to 30 px. Each cap exists because the full-size control pushed itself or the footer off a short screen — a target you cannot reach at all is worse than one under-sized — but they are departures, not compliance. Measured, not estimated: 60 viewport x text-scale combinations, 0 rows clipped |
+| §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three ways. Every number here is measured off the built bundle in a real browser, not read off the stylesheet.** (1) The on-screen Pause button is `min-height: 2.2rem`, so it tracks the text setting: 38 px at 100 %, 44.6 px at the shipped 125 % default, 52.8 / 61.6 / 70.4 px at 150 / 175 / 200 %. It first clears 64 px at 200 %. (2) On a viewport 560 px or shorter the Pause button is a flat **44 px at every text scale**, so on a landscape phone it never reaches 64 px at all. (3) A scan row's 64 px floor survives only above 700 px of height **and** above 560 px of width — either a short screen or a narrow one drops it to 56 px, and 400 px of height or 360 px of width drops it again to 44 px. A 320x400 or 280x560 screen renders every row at 44.4 px whatever the text scale. Where the caps do not bite the rows are comfortably over: 65 px at 100 % text and 124 px at 200 % on 1024x900. Each cap exists because the full-size control pushed itself or the footer off a short screen, and a target you cannot reach at all is worse than an under-sized one — but they are departures, not compliance. `pnpm layout-check` sweeps 26 viewports x 4 text scales x 3 screens: no clipped row, no unreachable Pause, no sideways scroll |
 | §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight — they can only wait it out |
 | §5: `tutorial-modal.js` provides the shared how-to-play modal | not used, and not reimplemented as a modal. How to play is a scannable **Help** screen in the same list grammar as everything else. A standalone build cannot call `window.BennyTutorial`, and there is no video to embed |
 | §9: a focus label must be short — "it is read aloud at every scan step, and at a 1 s scan speed a long label becomes a drone" | the shape labels run 6-10 s spoken, and per-item focus labels deliberately do NOT hold the scan timer, so at any rung below their length the tail is not heard. Mitigated, not fixed: the yardage that decides the shot now comes FIRST (~1.9 s, inside the 2 s default), and the character blurb — which can be cut off without cost — comes after. `menu-check` asserts that order and that budget. At the 1 s rung nothing useful fits, and that is not solvable by wording |
 
 Two items are met by a different route rather than skipped: the pause menu has
-both an on-screen Pause button and a scannable **Menu** row in the shot rack, so
+both an on-screen Pause button and a scannable **Menu** row on both gameplay
+lists — the shot rack and the practice range — so
 a player who cannot sustain a 3 s hold still reaches settings, a new round and
 the exit (§12 calls a hold-only pause "a locked door") — everywhere except the
 flight animation, which has no rack and so is hold-or-pointer only, as the table
@@ -111,8 +116,9 @@ nothing to catch.
 §12 also prices that Menu row, and the price is real: a scannable control "puts
 another stop on the scan cycle, and the player passes that stop on *every single
 pass*, for the whole session", and it suggests making such a route a setting.
-This build makes it unconditional, and places it last in the rack — after Where
-am I? and the six shapes — so it does not sit between the player and the shot.
+This build makes it unconditional on both gameplay lists, and places it last —
+after the six shapes, and after Where am I? in the rack — so it does not sit
+between the player and the shot.
 Making it a setting instead is not done.
 
 ## TTS
@@ -121,7 +127,16 @@ Making it a setting instead is not done.
   input — speech is interrupted by the next focus, input is never queued behind speech.
 - Everything spoken is also shown as a large-print caption (the caption bar).
 - Every utterance is ALSO `console.log`-ed as `[tts] <text>` (used for automated verification).
-- Settings: TTS on/off, rate, volume.
+- Settings: TTS on/off, rate, volume, and **Character names** — the cast layer
+  (CAST.md), off by default. With it off, `shapeFocus`, `shapeConfirm` and the
+  narration use each shape's plain name and plain blurb, the hole-out line ends
+  at "In the cup!", and the star's "Boing!" bounce line falls back to the
+  neutral wording every other shape already used. Every spoken line that names a
+  shape routes through `shapeName()`, so the two modes cannot half-apply — a
+  plain blurb under a character name would read as a bug, not a style, and
+  `menu-check` asserts that it never happens. Old saves get `false` for free:
+  `mergeSettings` starts from `DEFAULT_SETTINGS` and only takes keys the saved
+  object actually has.
 - All text lives in `src/game/lines.ts`: short sentences, common words, numbers in
   whole yards. No hold threshold is ever quoted to the player (§4); the Scan
   speed row speaks its value in seconds, as §7's canonical table does. Scores
@@ -145,7 +160,7 @@ Making it a setting instead is not done.
   "Space = next · Hold Space = back · Enter = pick · Hold Enter = menu",
   and an on-screen **Pause** button (pointer/touch parity with holding Enter).
   The button is not in the scan order; the scannable route is the Menu row at
-  the end of the shot rack.
+  the end of each gameplay list (the shot rack and the practice range).
 - Big shapes, thick trajectory line, no clutter. Reduce-motion setting: flight is
   summarized (ball drawn at end position, events spoken) instead of animated.
 
@@ -232,22 +247,40 @@ Pars are set by measurement (harness), not by hand.
   (`flex: 1 1 0` plus `min-height`) so the scan panel is the last thing to give
   up room, and the context menu lives inside `.main` so the caption bar and
   footer — which sit above the scrim on purpose — can never cover a menu row.
-  Verified by driving the real bundle across viewport and font-scale
-  combinations, including a landscape phone and 200 % text, because no harness
-  can see any of this.
+  None of this is visible to a harness that imports modules, so it gets one
+  that drives the built bundle in a real browser: `pnpm layout-check`.
+- `pnpm layout-check` — serves `dist/` and drives the real bundle in headless
+  Chromium across 26 viewports x 4 text scales x 3 screens (title, settings, and
+  the practice range, which carries the longest labels in the game). For every
+  row on every screen it scrolls the row into view and measures it against the
+  panel's **scrollport** — the padding box, not the content box; measuring the
+  content box under-reports the visible area and flags a clean layout as clipped,
+  which is what the first version of this harness did on 199 of 208 cells. It
+  also checks the Pause button is inside the viewport and the document does not
+  scroll sideways. Before the sweep it runs a self-test that forces a 4000 px
+  row, a 4000 px-wide row and a Pause button translated 9000 px down, and exits
+  non-zero if any detector fails to fire: a detector that cannot fail proves
+  nothing about a build that passes. The grid is not a general sample — it
+  enumerates the corner where narrow and short match at once, because two
+  independently designed grids both missed exactly that region, and it measures
+  at 200 % rather than 125 % because at 125 % a defective and a fixed Pause
+  button are both exactly 44 px.
 - `pnpm input-check` — headless self-test of the switch/scan grammar state machines.
 - `pnpm menu-check` — drives the REAL switch machine, scanner and flow through the
   context menu: that the menu latches after the hold that opened it, that Auto Scan
   cannot pick an item on that release, that New round, Exit and Delete are
-  two-step, that the rack has a scannable Menu row, that an armed warning holds
+  two-step, that an armed warning holds
   the scan so it cannot be cut off, and that a stalled utterance still releases
   the scan rather than stranding a hands-free player, that a settings row's
   spoken explanation matches the value it is reading, that Auto Scan wraps from
   the last row to the first with no silent step while a deliberate press still
   gets the deadzone beat, that a second pointer select inside the 250 ms window
   does nothing while one after it selects normally, that BOTH gameplay lists
-  carry the Menu row, and that a shape's yardage is spoken before its blurb and
-  inside the default scan interval. Most of those were real
+  carry the Menu row, that a shape's yardage is spoken before its blurb and
+  inside the default scan interval **in both cast modes**, that a course's best
+  score is spoken before its blurb, and that the cast layer is all-or-nothing —
+  a plain reading carries no character name, no character blurb, no character
+  pronoun and no character line at the cup. Most of those were real
   defects, and they survived a green suite because no other harness imported
   `flow.ts`.
 - `pnpm mutate` — proof that the harnesses are not vacuous. It breaks the shipped
@@ -297,8 +330,8 @@ it encodes.
   composed hole. `EDITOR_OPTIONS` spans 4x3x3x3x5 = **540** combinations;
   `pnpm editor-check` exercises a **62-combination sample** — all 32 corners
   (every option at its min or max) plus 30 deterministic mixed picks — and
-  prints the mean and max across them on the machine it ran on (this machine:
-  mean ~162 ms, max ~325 ms over four runs). The gate is 15 s, and it is a
+  prints the mean and max across them on the machine it ran on. The gate is
+  15 s, and it is a
   smoke test, not a benchmark — read the printed line, not this one. The
   playability guarantee is by CONSTRUCTION, from the composer's clamps; the
   harness spot-checks it, and 62/540 is a sample, not the space.
@@ -330,8 +363,9 @@ it encodes.
 - `src/tuning.ts` — every number: shapes, courses, physics constants, editor tables.
 - `src/sim/` — deterministic physics; `tools/` — the verification harnesses
   (`calibrate`, `holes`, `editor-check`, `input-check` and `menu-check` for the
-  scan grammar and the menu, and `mutate`, which breaks the shipped code to
-  check the others are not vacuous).
+  scan grammar and the menu, `layout-check`, which drives the built bundle in a
+  browser because layout is invisible to the others, and `mutate`, which breaks
+  the shipped code to check that none of them are vacuous).
 - `src/input/` — switch grammar + scanner; `src/speech/` — TTS; `src/audio/` — sound.
 - `src/render/draw.ts` — the canvas renderer; `src/ui/` — DOM shell and styles.
 - `src/game/` — flow state machine, all player-facing text, composer, saves.

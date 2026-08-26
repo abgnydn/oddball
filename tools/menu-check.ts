@@ -17,8 +17,25 @@ import { createScanner } from '../src/input/scanner'
 import { createSwitchMachine } from '../src/input/switch'
 import { createSim } from '../src/sim/physics'
 import { createTTS } from '../src/speech/tts'
-import { DEFAULT_SETTINGS, INPUT_COOLDOWN_MS, SHAPE_ORDER, SHAPES } from '../src/tuning'
-import type { CustomHole, Renderer, SaveAPI, SaveData, ScanItem, Settings, SFX } from '../src/types'
+import {
+	COURSES,
+	DEFAULT_SETTINGS,
+	INPUT_COOLDOWN_MS,
+	MAX_CUSTOM_HOLES,
+	SHAPE_ORDER,
+	SHAPES,
+} from '../src/tuning'
+import type {
+	CustomHole,
+	HoleSpec,
+	Renderer,
+	SaveAPI,
+	SaveData,
+	ScanItem,
+	Settings,
+	SFX,
+	StrikeOutcome,
+} from '../src/types'
 import type { Hud, HudItemSpec } from '../src/ui/hud'
 
 let failures = 0
@@ -42,6 +59,7 @@ const BASE_SETTINGS: Settings = {
 	flightTone: false,
 	dwell: 'off',
 	autoScan: false,
+	characters: false, // the shipped default; the cast layer is opt-in
 }
 
 // ---------- fakes for the DOM-facing collaborators only ----------
@@ -542,6 +560,7 @@ const settingsSpeechChecks = () => {
 		['auto', 'on — one switch', 'off — two switches', 'light moves by itself'],
 		['tone', 'on', 'off', 'sings higher'],
 		['dwell', 'slow', 'off', 'hold still to choose'],
+		['characters', 'on', 'off', 'a name and a story'],
 	]
 	for (const [id, onV, offV, onlyWhenOn] of cases) {
 		const on = say(id, onV)
@@ -692,19 +711,105 @@ const focusOrderChecks = () => {
 	// the impossible would just get the assertion weakened later. DESIGN.md
 	// discloses the 1 s case in the departures table instead.
 	const budgetWords = (DEFAULT_SETTINGS.scanMs / 1000 / 60) * WPM
-	for (const id of SHAPE_ORDER) {
-		const line = L.shapeFocus(id, 150)
-		const end = line.indexOf('yards.')
+	// Both cast modes, because the plain names are LONGER than the character
+	// names ("The pancake" vs "Penny") and the default mode is the plain one.
+	for (const characters of [false, true]) {
+		const mode = characters ? 'characters on' : 'characters off'
+		for (const id of SHAPE_ORDER) {
+			const line = L.shapeFocus(id, 150, characters)
+			const blurb = characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb
+			const end = line.indexOf('yards.')
+			check(
+				`${id} (${mode}): the yardage is spoken before the blurb`,
+				end !== -1 && end < line.indexOf(blurb),
+				line,
+			)
+			const words = line.slice(0, end + 6).split(/\s+/).length
+			check(
+				`${id} (${mode}): the yardage fits the default scan rung`,
+				words <= budgetWords,
+				`${words} words vs ~${budgetWords.toFixed(1)} at ${DEFAULT_SETTINGS.scanMs}ms/${WPM}wpm`,
+			)
+		}
+	}
+}
+
+// The course picker carries the same "number before flavour" rule as the shape
+// rack and had the same defect. Nothing asserted it until now, so a later edit
+// putting the blurb first would have shipped silently.
+const courseFocusChecks = () => {
+	for (const c of COURSES) {
+		const withBest = L.courseFocus(c.name, c.blurb, 7)
+		const noBest = L.courseFocus(c.name, c.blurb)
 		check(
-			`${id}: the yardage is spoken before the blurb`,
-			end !== -1 && end < line.indexOf(SHAPES[id].blurb),
-			line,
+			`${c.name}: the best score is spoken before the blurb`,
+			withBest.indexOf('7 shots') < withBest.indexOf(c.blurb),
+			withBest,
 		)
-		const words = line.slice(0, end + 6).split(/\s+/).length
+		check(`${c.name}: two-player focus states no best score`, !noBest.includes('best'), noBest)
+	}
+	// The cap is defined once, in tuning. This line used to hard-code "ten" and
+	// would have started lying the moment the cap moved.
+	check(
+		'the full-book line names the real cap',
+		L.BOOK_FULL.includes('ten') && MAX_CUSTOM_HOLES === 10,
+		`${L.BOOK_FULL} (cap=${MAX_CUSTOM_HOLES})`,
+	)
+}
+
+// ---------- 5b. the cast layer is all-or-nothing ----------
+
+// Settings.characters is off by default, so the DEFAULT experience is the one
+// least exercised by hand. A half-applied toggle — plain blurb under a
+// character name, or "In the cup! Brick is very pleased." for a player who
+// never opted into Brick — reads as a bug rather than a style.
+const castLayerChecks = () => {
+	// The cast is written with gendered pronouns and disability-coded detail
+	// (CAST.md); plain mode is written entirely in "it". That makes a pronoun
+	// the cheapest reliable tell that a character line leaked into plain mode.
+	const PRONOUN = /\b(she|he|her|him|his|hers)\b/i
+	for (const id of SHAPE_ORDER) {
+		const off = L.shapeFocus(id, 150, false)
+		const on = L.shapeFocus(id, 150, true)
 		check(
-			`${id}: the yardage fits the default scan rung`,
-			words <= budgetWords,
-			`${words} words vs ~${budgetWords.toFixed(1)} at ${DEFAULT_SETTINGS.scanMs}ms/${WPM}wpm`,
+			`${id}: plain focus uses the plain name and the plain blurb`,
+			off.includes(SHAPES[id].plainName) && off.includes(SHAPES[id].plainBlurb),
+			off,
+		)
+		check(`${id}: plain focus carries no character pronoun`, !PRONOUN.test(off), off)
+		check(
+			`${id}: character focus uses the character name and blurb`,
+			on.includes(SHAPES[id].name) && on.includes(SHAPES[id].blurb),
+			on,
+		)
+		check(`${id}: the two modes differ`, off !== on, `${off} // ${on}`)
+		check(
+			`${id}: the swing confirmation follows the same mode`,
+			L.shapeConfirm(id, false).includes(SHAPES[id].plainName) &&
+				L.shapeConfirm(id, true).includes(SHAPES[id].name),
+			`${L.shapeConfirm(id, false)} // ${L.shapeConfirm(id, true)}`,
+		)
+
+		// The hole-out line is the one place a character speaks unprompted, and
+		// it fires at the emotional peak of a hole — the leak a player would
+		// most notice, and the one a settings-screen check cannot see.
+		const holedOut: StrikeOutcome = {
+			points: [],
+			events: [],
+			end: { x: 100, lie: 'green' },
+			holed: true,
+			water: false,
+			carry: 100,
+			total: 100,
+		}
+		const anyHole = COURSES[0]?.holes[0] as HoleSpec
+		const cupOff = L.narrate(holedOut, id, anyHole, false)
+		const cupOn = L.narrate(holedOut, id, anyHole, true)
+		check(`${id}: plain hole-out says only that it went in`, cupOff === 'In the cup!', cupOff)
+		check(
+			`${id}: character hole-out adds the character's line`,
+			cupOn.length > cupOff.length,
+			cupOn,
 		)
 	}
 }
@@ -723,6 +828,8 @@ const main = async () => {
 	await ttsHoldChecks()
 	await watchdogChecks()
 	settingsSpeechChecks()
+	courseFocusChecks()
+	castLayerChecks()
 	focusOrderChecks()
 
 	for (const [name, ok, detail] of results) {

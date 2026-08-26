@@ -9,6 +9,8 @@ export interface ShapeSpec {
 	id: ShapeId
 	name: string // spoken + shown name ("Ball", "Cube", ...)
 	blurb: string // spoken on focus: what it does, in short common words
+	plainName: string // same shape without the cast persona ("The cube")
+	plainBlurb: string // same facts, no character voice; used when characters=off
 	maxCarry: number // m — cap on the carry the golfer can get with this shape
 	launchDeg: number // launch angle above horizontal
 	drag: number // quadratic drag coefficient (1/m), applied to airspeed
@@ -273,6 +275,9 @@ export interface Settings {
 	/** Single-switch mode: the highlight advances by itself at scanMs, so the
 	 *  player only ever presses Enter (the hub's one-switch scheme). */
 	autoScan: boolean
+	/** Cast layer (CAST.md): shapes get names and a voice. Off by default —
+	 *  a first-time player hears what the shape DOES before who it is. */
+	characters: boolean
 }
 
 export interface RoundSave {

@@ -7,21 +7,31 @@
    .header-title   game title inside .header
    .header-screen  current screen name inside .header
    .main           middle area; canvas parent (position:relative, flex:1)
-   .canvas-wrap    the course view's wrapper; also the aria-hidden target while
-                   the pause menu is open (NOT .main — the overlay is inside it)
+   .canvas-wrap    the course view's wrapper; one of the two aria-hidden targets
+                   while the pause menu is open (NOT .main — the overlay is
+                   inside it, and hiding .main hides the menu itself)
    .canvas-wrap canvas  the course view; absolutely fills its wrapper
    .scan-panel     the scan list's column; width/padding/scroll live here, not
-                   in an inline style, so media queries can reach them
+                   in an inline style, so media queries can reach them. Also the
+                   second aria-hidden target while the pause menu is open — the
+                   list behind the scrim is still in the accessibility tree
+                   otherwise, and a screen reader walks it instead of the menu
    .caption-bar    VERY large always-visible caption mirroring speech
    .footer         bottom bar: mode, focused item, legend
    .footer-mode    current mode text inside .footer
    .footer-focus   currently highlighted item's name inside .footer
    .footer-legend  "Space = next · Hold Space = back · Enter = pick · Hold Enter = menu"
-   .footer-pause   on-screen Pause button (pointer/touch parity with Hold Enter)
+   .footer-pause   on-screen Pause button (pointer/touch parity with Hold Enter);
+                   min-height 2.2rem so it tracks the text setting, but a flat
+                   44px at or under 560px of viewport height, where it also
+                   stops shrinking in the footer's flex row
    .scan-list      vertical scannable list container
    .scan-item      one big scannable row/button (min-height 64px, dropping to
                    56px at or under 700px of viewport height or 560px of width,
-                   and 44px at or under 400px of height — see the notes there)
+                   and 44px at or under 400px of height or 360px of width — see
+                   the notes there). Its inline padding is capped in px so the
+                   longest label still fits when text scales and the panel does
+                   not.
    .scan-glyph     character portrait canvas inside a rack .scan-item
    .overlay        context-menu backdrop: absolute inside .main, dimmed,
                    centers its child (never behind the caption bar or footer)
@@ -433,10 +443,30 @@ body {
 	/* One line only. The footer wraps by default so a long focused-item name
 	   can take the width it needs; on a short viewport that wrap put the Pause
 	   button on a second row and 31px of it below the fold, unreachable because
-	   body is overflow:hidden. The name ellipsises instead — it is also in the
-	   caption bar and on the row itself. */
+	   body is overflow:hidden.
+
+	   Refusing to wrap is not enough on its own: at 280px wide the row simply
+	   overflowed instead, and the Pause button's right edge measured 280.7px in
+	   a 280px viewport — off screen and, again, unreachable. The first fix
+	   traded a button below the fold for a button past the edge. Everything to
+	   the LEFT of Pause has to be allowed to shrink for nowrap to be safe. */
 	.footer {
 		flex-wrap: nowrap;
+		gap: 0.4rem 0.6rem;
+	}
+
+	.footer-mode {
+		min-width: 0;
+		flex: 0 1 auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Pause never shrinks and never wraps: it is the control this whole block
+	   exists to keep reachable. */
+	.footer-pause {
+		flex: 0 0 auto;
 	}
 
 	/* The .footer-pause cap lives AFTER the base rule, below — see the note
@@ -516,7 +546,15 @@ body {
 	align-items: center;
 	width: 100%;
 	min-height: 64px;
-	padding: 0.9rem 1.2rem;
+	/* The inline padding is capped in px on purpose. Text scales with the font
+	   setting; the panel's width does not — it is a fixed share of a
+	   side-by-side layout. At 200% the uncapped 1.2rem is 38.4px a side, which
+	   pushed the longest label in the game ("Pancake") 3px past its own row on
+	   a 912x1368 tablet. Capping the padding is the only fix here that does not
+	   truncate a shape's name, and the name is what the player is choosing.
+	   Both narrow-screen tiers below set tighter values, so this cap never
+	   overrides them whichever way the cascade falls. */
+	padding: 0.9rem min(1.2rem, 24px);
 	background: var(--panel);
 	color: var(--text);
 	border: 3px solid var(--border);
@@ -615,7 +653,33 @@ body {
 	}
 }
 
-/* Below this the 700px caps are still not enough: a landscape phone (667x325,
+/* The narrow half of the same problem: the list is full-width here (it stacks),
+   but 390px of it at 200% still wraps a settings value onto six lines. Same cap
+   as the short-viewport rule; the caption bar keeps printing the words large. */
+@media (max-width: 560px) {
+	.scan-item {
+		font-size: min(1.15rem, 22px);
+		padding: min(0.9rem, 14px) min(1.2rem, 18px);
+		min-height: 56px;
+	}
+
+	.scan-glyph {
+		width: min(2.75rem, 40px);
+		height: min(2.75rem, 40px);
+	}
+}
+
+/* MUST stay after the max-width:560px block above. Both select .scan-item at
+   equal specificity, so document order decides and a media query does not change
+   it. Ordered the other way round — which is how it shipped — the LOOSER width
+   tier won wherever both matched, restoring the 56px floor on every viewport
+   under 560px wide AND 400px tall, which is exactly where the label wraps most.
+   Measured there: 360x320 clipped 39.8px, 480x320 clipped 9px. That is the third
+   time this cascade mistake has been made in this file; layout-check now covers
+   the intersection, because a grid that tests each edge and not the corner does
+   not see it.
+
+   Below this the 700px caps are still not enough: a landscape phone (667x325,
    812x325, 844x325) and a 640x300 window leave the panel ~82px of inner height
    while a two-line row at the 22px cap measures 95.6px, so the row overflows
    even at the shipped 125% default — not only at 200%. The floor below is
@@ -637,23 +701,53 @@ body {
 	.scan-panel {
 		padding: min(0.5rem, 8px);
 	}
+
+	/* Shrinking the row is only half of it: the panel has to be tall enough to
+	   hold one. At 360x320 the caption took 77px and the stacked course band
+	   another 37px, leaving the panel 55.8px for a 69.6px row. The course view
+	   is not readable at 37px anyway, and the caption's words are on the row
+	   itself — so at this height both yield and the list takes the room. */
+	.caption-bar {
+		max-height: min(16dvh, 6rem);
+	}
+
+	.main {
+		min-height: min(40dvh, 15rem);
+	}
+
+	/* Stacked (narrow) layouts give the course view 34% of .main. At 320px tall
+	   that is a 37px band showing nothing legible, taken from the list that has
+	   to hold a row. A raised .main floor alone did not work here: it pushed the
+	   footer down and put the Pause button 9.7px below the fold, which is the
+	   same trade this file has now got wrong twice. Take it from the band. */
+	.canvas-wrap {
+		flex: 0 0 20% !important;
+	}
 }
 
-/* The narrow half of the same problem: the list is full-width here (it stacks),
-   but 390px of it at 200% still wraps a settings value onto six lines. Same cap
-   as the short-viewport rule; the caption bar keeps printing the words large. */
-@media (max-width: 560px) {
+/* Narrower than a stacked list can wrap comfortably. At 280px the 22px cap
+   still wrapped a settings value onto five lines, 126px into a 121px panel.
+   280px is the Galaxy Fold cover screen, so this is a real device, not a
+   corner. */
+@media (max-width: 360px) {
+	/* Every value here is at least as tight as the 400px-height tier above, so
+	   whichever wins on document order the result is still small enough. That is
+	   deliberate: three defects in this file have come from one tier quietly
+	   beating another, and ordering is a fact about the file that is easy to
+	   break and hard to see. Tiers that cannot conflict do not need to be
+	   ordered correctly. */
 	.scan-item {
-		font-size: min(1.15rem, 22px);
-		padding: min(0.9rem, 14px) min(1.2rem, 18px);
-		min-height: 56px;
+		font-size: min(1rem, 16px);
+		padding: min(0.5rem, 8px) min(0.8rem, 12px);
+		min-height: 44px;
 	}
 
 	.scan-glyph {
-		width: min(2.75rem, 40px);
-		height: min(2.75rem, 40px);
+		width: min(2rem, 28px);
+		height: min(2rem, 28px);
 	}
 }
+
 
 .overlay {
 	/* absolute within .main, not fixed to the viewport: the caption bar and the

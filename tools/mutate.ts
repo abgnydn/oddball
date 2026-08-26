@@ -5,6 +5,9 @@
 // Each mutation is a real regression this project either shipped or nearly
 // shipped. Anything that SURVIVES is a hole in the harness, and this exits 1.
 //
+// This tool WRITES to src/ and restores in a finally, so it refuses to start on
+// a dirty tree: `git checkout .` has to stay the correct recovery.
+//
 // Run:  pnpm mutate
 
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: the MUTATIONS table
@@ -106,10 +109,20 @@ const MUTATIONS: Mutation[] = [
 		edits: [[FL, '\t\t\t\tif (armed !== id) {', '\t\t\t\tif (false as boolean) {']],
 	},
 	{
+		// The anchor MUST include the rack's own preceding comment. Both lists
+		// carry a byte-identical menu row, and apply() uses String.replace with a
+		// string, which hits the FIRST match — so this mutation used to delete the
+		// RANGE's row and pass by failing the range's check, leaving the rack's row
+		// covered by nothing while the summary said 15/15. Same class as the
+		// index-based PAIR bug fixed below, arriving through source order instead.
 		name: 'flow: no scannable Menu row in the rack',
 		harness: 'menu-check',
 		edits: [
-			[FL, "\t\t\t{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeak },\n", ''],
+			[
+				FL,
+				"\t\t\t// which is why it sits last.\n\t\t\t{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeak },\n",
+				'\t\t\t// which is why it sits last.\n',
+			],
 		],
 	},
 	{
@@ -151,6 +164,40 @@ const MUTATIONS: Mutation[] = [
 // By NAME, not by index: this was `MUTATIONS[3]` and `MUTATIONS[5]`, so
 // inserting a mutation above silently re-pointed the pair while it kept the
 // name of the one it used to be.
+MUTATIONS.push(
+	{
+		// The cast layer is opt-in, so the DEFAULT reading is the one nobody
+		// plays by hand. A half-applied toggle is the likely way it breaks.
+		name: 'lines: the cast blurb leaks into the plain reading',
+		harness: 'menu-check',
+		edits: [
+			[LN, '\t\tcharacters ? SHAPES[id].blurb : SHAPES[id].plainBlurb\n', '\t\tSHAPES[id].blurb\n'],
+		],
+	},
+	{
+		name: 'lines: the hole-out line ignores the cast setting',
+		harness: 'menu-check',
+		edits: [
+			[
+				LN,
+				"\tif (out.holed) return characters ? `In the cup! ${HOLED_FLAVOR[id]}` : 'In the cup!'",
+				'\tif (out.holed) return `In the cup! ${HOLED_FLAVOR[id]}`',
+			],
+		],
+	},
+	{
+		name: 'lines: the course best score goes back after the flavour',
+		harness: 'menu-check',
+		edits: [
+			[
+				LN,
+				"\t`${name}.${best !== undefined ? ` Your best here: ${best} shots.` : ''} ${blurb}`",
+				"\t`${name}. ${blurb}${best !== undefined ? ` Your best here: ${best} shots.` : ''}`",
+			],
+		],
+	},
+)
+
 const byName = (name: string): Mutation['edits'] => {
 	const m = MUTATIONS.find((x) => x.name === name)
 	if (m === undefined) throw new Error(`no mutation named ${JSON.stringify(name)}`)

@@ -16,6 +16,7 @@
 		"editor-check": "esbuild tools/editor-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/editor-check.mjs && node node_modules/.cache/editor-check.mjs",
 		"input-check": "esbuild tools/input-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/input-check.mjs && node node_modules/.cache/input-check.mjs",
 		"menu-check": "esbuild tools/menu-check.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/menu-check.mjs && node node_modules/.cache/menu-check.mjs",
+		"layout-check": "esbuild tools/layout-check.ts --bundle --platform=node --format=esm --log-level=warning --packages=external --outfile=node_modules/.cache/layout-check.mjs && node node_modules/.cache/layout-check.mjs",
 		"mutate": "esbuild tools/mutate.ts --bundle --platform=node --format=esm --log-level=warning --packages=external --outfile=node_modules/.cache/mutate.mjs && node node_modules/.cache/mutate.mjs",
 		"deploy": "wrangler pages deploy dist --project-name oddball"
 	},
@@ -23,6 +24,7 @@
 		"@biomejs/biome": "^2.5.7",
 		"@types/node": "^26.1.2",
 		"esbuild": "0.28.1",
+		"playwright-core": "^1.62.1",
 		"typescript": "^5.9.3",
 		"vite": "^7.1.7"
 	},

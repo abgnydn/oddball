@@ -17,7 +17,6 @@ import {
 	nextScanMs,
 	RANGE,
 	SHAPE_ORDER,
-	SHAPES,
 } from '../tuning'
 import type {
 	BallState,
@@ -333,6 +332,14 @@ export function createFlow(deps: Deps): Flow {
 				},
 			},
 			{
+				id: 'characters',
+				label: L.SETTINGS_LABELS.characters,
+				value: () => (settings.characters ? 'on' : 'off'),
+				cycle: () => {
+					settings = { ...settings, characters: !settings.characters }
+				},
+			},
+			{
 				id: 'scan',
 				label: L.SETTINGS_LABELS.scan,
 				value: () => {
@@ -642,15 +649,15 @@ export function createFlow(deps: Deps): Flow {
 			{ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak },
 			...SHAPE_ORDER.map((id) => ({
 				id,
-				label: SHAPES[id].name,
-				speak: L.shapeFocus(id, reach(id)),
+				label: L.shapeName(id, settings.characters),
+				speak: L.shapeFocus(id, reach(id), settings.characters),
 				glyph: id,
 			})),
 			// The range is gameplay, so §12's scannable pause applies here too.
 			// It was in the round rack only, which made the "no screen needs a
 			// hold" claim false for everyone who cannot sustain one — in the mode
 			// most likely to be someone's FIRST screen.
-			{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeak },
+			{ id: 'menu', label: L.MENU.openMenu, speak: L.MENU.openMenuSpeakNoRound },
 		]
 		const opts: { announce?: string; startIndex?: number; rebuild?: (i: number) => void } = {
 			startIndex,
@@ -681,7 +688,7 @@ export function createFlow(deps: Deps): Flow {
 		scanner.clear()
 		hud.showPanel(false)
 		hud.setMode('Watch!')
-		tts.speak(L.shapeConfirm(id))
+		tts.speak(L.shapeConfirm(id, settings.characters))
 		sfx.play('swing')
 		rangeRng = (rangeRng + 1) | 0
 		const rng = mulberry32((Date.now() ^ (rangeRng * 2654435761)) >>> 0)
@@ -773,8 +780,8 @@ export function createFlow(deps: Deps): Flow {
 			{ id: 'where', label: L.MENU.whereAmI, speak: L.MENU.whereAmISpeak },
 			...SHAPE_ORDER.map((id) => ({
 				id,
-				label: SHAPES[id].name,
-				speak: L.shapeFocus(id, reach(id)),
+				label: L.shapeName(id, settings.characters),
+				speak: L.shapeFocus(id, reach(id), settings.characters),
 				glyph: id,
 			})),
 			// A scannable route to the menu. Holding Enter also opens it, but a
@@ -852,7 +859,7 @@ export function createFlow(deps: Deps): Flow {
 		hud.showPanel(false)
 		hud.setMode('Watch!')
 		hud.footerFocus('')
-		tts.speak(L.shapeConfirm(id))
+		tts.speak(L.shapeConfirm(id, settings.characters))
 		sfx.play('swing')
 		const rng = mulberry32(round.seed + round.player * 500 + round.holeIdx * 1000 + strokeNo)
 		const out = sim.strike(hole, round.ball, id, rng)
@@ -905,14 +912,16 @@ export function createFlow(deps: Deps): Flow {
 		persist()
 		const strokes = curStrokes()
 		if (out.holed) {
-			endHoleForPlayer(`${L.narrate(out, id, hole)} ${L.scoreLine(strokes, hole.par)}`)
+			endHoleForPlayer(
+				`${L.narrate(out, id, hole, settings.characters)} ${L.scoreLine(strokes, hole.par)}`,
+			)
 			return
 		}
 		if (strokes >= MAX_STROKES) {
-			endHoleForPlayer(`${L.narrate(out, id, hole)} ${L.REST_LINE}`)
+			endHoleForPlayer(`${L.narrate(out, id, hole, settings.characters)} ${L.REST_LINE}`)
 			return
 		}
-		rack(L.narrate(out, id, hole))
+		rack(L.narrate(out, id, hole, settings.characters))
 	}
 
 	/** The current player finished the hole (holed or rested). In 2P the other

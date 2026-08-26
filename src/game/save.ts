@@ -3,7 +3,7 @@
 // DEFAULT_SETTINGS so new fields survive old saves. Round schema v2 (players,
 // course, per-player strokes) — v1 rounds fail validation and are dropped.
 
-import { DEFAULT_SETTINGS } from '../tuning'
+import { DEFAULT_SETTINGS, MAX_CUSTOM_HOLES } from '../tuning'
 import type { CustomHole, EditorParams, RoundSave, SaveAPI, SaveData, Settings } from '../types'
 
 const KEY = 'oddball-save-v1'
@@ -59,7 +59,7 @@ const validCustomHoles = (raw: unknown): CustomHole[] => {
 				!!(h as CustomHole).params &&
 				typeof (h as CustomHole).params === 'object',
 		)
-		.slice(0, 10)
+		.slice(0, MAX_CUSTOM_HOLES)
 }
 
 const validDraft = (raw: unknown): EditorParams | undefined => {

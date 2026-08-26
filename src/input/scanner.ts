@@ -8,6 +8,11 @@
 // resting the pointer on an item fills its --dwell custom property 0 → 1 over
 // ms (theme.css paints the fill); reaching 1 acts exactly like a click.
 // Pointer leave or press cancels. Independent of the scan/keyboard flow.
+// After the list rebuilds, the dwell does NOT re-arm until the pointer moves
+// DWELL_REARM_PX: arming a two-step confirm re-fires pointerenter under a
+// still pointer, and the dwell timer then confirmed the prompt it had just
+// opened. Re-arming on ANY movement is defeated by an eye tracker's idle
+// jitter, hence a pixel threshold rather than a movement event.
 //
 // Two timer modes (house-style calibration against the shipped NARBE hub):
 // hold-Space = BACKWARD scanning while held (steps at scanMs, no deadzone on

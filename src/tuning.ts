@@ -28,6 +28,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	sphere: {
 		id: 'sphere',
 		name: 'Dot',
+		plainName: 'Ball',
+		plainBlurb: 'It rolls true, and it rolls a long way.',
 		blurb:
 			'Dot hears everything. She listens for the beeper at the cup, and rolls right to it. She does not need to see it.',
 		maxCarry: 155,
@@ -44,6 +46,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	cube: {
 		id: 'cube',
 		name: 'Brick',
+		plainName: 'Cube',
+		plainBlurb: 'It lands and it stays. Wind moves it less than any other shape.',
 		blurb: 'Brick lands, and he stays. Wind moves him less than any other shape. Brick is deaf.',
 		maxCarry: 85,
 		launchDeg: 24,
@@ -58,6 +62,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	disc: {
 		id: 'disc',
 		name: 'Glide',
+		plainName: 'Disc',
+		plainBlurb: 'It flies farther than anything else. The wind pushes it around the most.',
 		blurb:
 			'Glide flies, and nobody flies farther. The wind pushes them around the most. Glide does not walk.',
 		maxCarry: 235,
@@ -73,6 +79,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	egg: {
 		id: 'egg',
 		name: 'Egg',
+		plainName: 'Egg',
+		plainBlurb: 'Nobody knows where it will go.',
 		blurb: 'The egg. Who knows where it will go? Not even the egg.',
 		maxCarry: 190,
 		launchDeg: 16,
@@ -87,6 +95,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	star: {
 		id: 'star',
 		name: 'Boing',
+		plainName: 'Star',
+		plainBlurb: 'It bounces, and it keeps bouncing.',
 		blurb: "Boing just loves to bounce. Boing! Where will he land? Even he doesn't know.",
 		maxCarry: 140,
 		launchDeg: 20,
@@ -101,6 +111,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	pancake: {
 		id: 'pancake',
 		name: 'Penny',
+		plainName: 'Pancake',
+		plainBlurb: 'It flies high, lands soft, and stays right there.',
 		blurb:
 			'Penny flies high, lands soft, and stays right there. She taps once for yes — she says what she needs to.',
 		maxCarry: 130,
@@ -484,6 +496,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	flightTone: true,
 	dwell: 'off',
 	autoScan: false,
+	characters: false,
 }
 
 export const DWELL_MS = { slow: 2000, fast: 1200 } as const
@@ -514,9 +527,11 @@ export const DWELL_REARM_PX = 24
  *  too fast for them. Values from the hub's shared/scan-manager.js SCAN_SPEEDS. */
 export const SCAN_SPEEDS = [1000, 2000, 3000, 4000] as const
 
-/** How many holes someone can keep. Lived as a bare `>= 10` in flow.ts while
- *  DESIGN.md said this file holds "every number" and README said "ten of them",
- *  so three places had to agree by hand. */
+/** How many holes someone can keep. The single source: flow.ts's cap, save.ts's
+ *  truncation on load, and the spoken "you have ten already" all read it. The
+ *  first attempt at this moved only flow.ts and left three hand-written tens
+ *  behind — in lines.ts, save.ts and the README — while the comment here
+ *  claimed, in the past tense, that the drift was fixed. */
 export const MAX_CUSTOM_HOLES = 10
 
 export const nextScanMs = (cur: number): number =>
