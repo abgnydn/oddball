@@ -131,8 +131,8 @@ const MUTATIONS: Mutation[] = [
 		edits: [
 			[
 				LN,
-				'`${SHAPES[id].name}. Goes about ${yd(reachM)} yards. ${SHAPES[id].blurb}`',
-				'`${SHAPES[id].name}. ${SHAPES[id].blurb} Goes about ${yd(reachM)} yards.`',
+				'\t`${shapeName(id, characters)}. Goes about ${yd(reachM)} yards. ${\n\t\tcharacters ? SHAPES[id].blurb : SHAPES[id].plainBlurb\n\t}`',
+				'\t`${shapeName(id, characters)}. ${\n\t\tcharacters ? SHAPES[id].blurb : SHAPES[id].plainBlurb\n\t} Goes about ${yd(reachM)} yards.`',
 			],
 		],
 	},
