@@ -26,7 +26,7 @@
 // Run: pnpm layout-check
 
 import { execFileSync } from 'node:child_process'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
 import { chromium } from 'playwright-core'
@@ -65,6 +65,13 @@ const VIEWPORTS: Array<[number, number]> = [
 	[280, 653], // Galaxy Fold cover screen
 	[280, 560],
 	[280, 480],
+	// 280-310 wide by 561-589 tall: the band where the footer legend survived at
+	// 150 % and pushed the Pause button off the bottom. 280 is the Galaxy Fold
+	// cover screen, which this stylesheet calls "a real device, not a corner".
+	[280, 561],
+	[280, 575],
+	[300, 561],
+	[310, 589],
 	// --- the OTHER corner: mid-width AND tall, where large print starves the
 	// side-by-side panel. This band was empty in the first version of this
 	// grid: every wide cell above was >=900px, every short one <=400px tall,
@@ -336,10 +343,37 @@ const passesFor = (css: string): Pass[] => [
 		// that gets skipped.
 		label: 'breakpoint edges',
 		viewports: edgeViewports(css),
-		scales: [125, 200],
+		// EVERY scale. This pass ran [125, 200] and generated the exact cell —
+		// (320, 561) — that would have caught a Pause button 15.4px off screen at
+		// 150 %. This file already carries the lesson ("a scale the grid does not
+		// test is a scale the grid does not cover") and it was applied to the main
+		// grid and not to the pass written for boundaries.
+		scales: SCALES,
 		highlightThick: 'thick',
 		characters: false,
 		reduceMotion: true,
+	},
+	{
+		// The SHIPPED motion default. Every other pass sets reduceMotion true,
+		// which theme.css turns into `box-shadow: none` on the focused row — so
+		// the focus pulse, drawn outside the row exactly like the ring, was
+		// deleted in every cell ever measured. The parameter and the type field
+		// for this were added a round before this pass was, with a comment
+		// claiming the fix in the past tense while all four passes still said
+		// true. A reviewer read the four literals instead of the comment.
+		label: 'motion on',
+		viewports: [
+			[1024, 768],
+			[912, 1368],
+			[412, 481],
+			[360, 640],
+			[320, 320],
+			[280, 480],
+		],
+		scales: [125, 200],
+		highlightThick: 'thick',
+		characters: false,
+		reduceMotion: false,
 	},
 	{
 		label: 'cast names',
@@ -375,6 +409,18 @@ const main = async () => {
 		process.exit(1)
 	}
 
+	// `playwright-core` is a library, not a downloader: `pnpm install` fetches no
+	// browser. On the machine this was written on a global Playwright had already
+	// populated the cache, so nothing here failed and nothing said what was
+	// needed — and `pnpm deploy` gates on this harness, which made it an
+	// undocumented deploy prerequisite.
+	if (!existsSync(chromium.executablePath())) {
+		console.log(
+			`no chromium binary at ${chromium.executablePath()} — run \`pnpm exec playwright install chromium\` once. playwright-core does not download one.`,
+		)
+		process.exit(1)
+	}
+
 	// The breakpoint-edge cells come out of the shipped stylesheet, so they
 	// follow it when a media query moves.
 	const cssFiles = readdirSync(join(DIST, 'assets')).filter((f) => f.endsWith('.css'))
@@ -403,7 +449,7 @@ const main = async () => {
 	try {
 		// Prove each detector fires BEFORE trusting a clean run. A vacuous
 		// harness reports ALL PASS on a broken build, which is worse than no
-		// harness because it is believed. Two of the three checks below were
+		// harness because it is believed. Three of the four probes below were
 		// silently inert at some point while this file was being written.
 		await page.setViewportSize({ width: 900, height: 700 })
 		await page.goto(url, { waitUntil: 'load' })
@@ -492,8 +538,36 @@ const main = async () => {
 			)
 			process.exit(1)
 		}
+		// The focus PULSE reaches outside the row exactly like the ring, and it is
+		// the one of --hl-reach's three consumers that silently stopped using it.
+		// It cannot be measured per cell (see the note in the row loop), so it is
+		// checked where the drift actually happens: in the stylesheet.
+		// Brace-matched, not `[^}]*?`. A keyframes block contains nested rules, so
+		// a lazy scan stops at the FIRST inner `}` and never reaches the 50%
+		// frame — the same mistake this file made in the breakpoint parser. Third
+		// time for that pattern in this file.
+		const kfAt = cssText.indexOf('@keyframes hl-pulse')
+		let kf = ''
+		if (kfAt !== -1) {
+			let depth = 0
+			for (let i = cssText.indexOf('{', kfAt); i < cssText.length; i++) {
+				if (cssText[i] === '{') depth++
+				else if (cssText[i] === '}' && --depth === 0) {
+					kf = cssText.slice(kfAt, i + 1)
+					break
+				}
+			}
+		}
+		const spread = /box-shadow:\s*0\s+0\s+0\s+([^;}]+?)\s+(?:color-mix|rgb|#|var)/.exec(kf)
+		if (kf === '' || spread === null || !(spread[1] ?? '').includes('--hl-reach')) {
+			console.log(
+				`layout-check: SELF-TEST FAILED — the hl-pulse keyframe's spread is ${spread?.[1]?.trim() ?? '(not found)'}, not var(--hl-reach). The pulse is drawn outside the row like the ring and must share its reach, or the scroll padding that keeps the ring on screen will not cover it.`,
+			)
+			process.exit(1)
+		}
 		selfTest.push(
 			`pause routes agree (${viaClick.split(',').length} rows)`,
+			'pulse shares the ring variable',
 			`clip detector fired at ${probes.vClip}px`,
 			`overflow detector fired`,
 			`Pause detector fired at ${probes.outside}px`,
@@ -622,6 +696,11 @@ const main = async () => {
 										// here would silently stop matching two of the three.
 										row.setAttribute('data-scan-focus', 'true')
 										const fs = getComputedStyle(row)
+										// The pulse is NOT read here. It is an animation, so
+										// getComputedStyle returns the instant sampled — about 0 just
+										// after focus is set — and a build with the overshoot restored
+										// passed a detector that tried. It is guarded in the stylesheet
+										// instead; see the self-test.
 										const reach =
 											parseFloat(fs.outlineWidth || '0') + parseFloat(fs.outlineOffset || '0')
 										row.removeAttribute('data-scan-focus')
@@ -719,7 +798,7 @@ const main = async () => {
 	}
 
 	console.log(
-		`layout-check: ${cells} cells (${VIEWPORTS.length} viewports x ${SCALES.length} scales x ${SCREENS.length} screens, plus focused passes for the thick ring and the cast names), ${rowsMeasured} row measurements`,
+		`layout-check: ${cells} cells (${VIEWPORTS.length} viewports x ${SCALES.length} scales x ${SCREENS.length} screens, plus ${passesFor(cssText).length - 1} focused passes), ${rowsMeasured} row measurements`,
 	)
 	console.log(`self-test: ${selfTest.join('; ')} — a detector that cannot fail is not a check`)
 	for (const c of bad) {

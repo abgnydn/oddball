@@ -16,19 +16,25 @@ ticked.
 
 **Odd Ball is not a NARBE House project.** It is not in their library, it has
 not been submitted, and nobody there has reviewed or endorsed it. It is one
-person's build against their published contract. Their §13 asks that forks not
-imply affiliation, and naming them three times in the paragraph above comes
-close enough to that line to be worth saying plainly.
+person's build against their published contract. Their §13 reserves "NARBE" and
+"Benny's Accessibility Hub" as project identifiers and grants no trademark
+rights; the names above cite their contract and claim no connection to it.
 
 ## Playing
+
+**Setting it up for one switch.** Map the switch to Enter. In Settings, turn
+**Auto scan** on and set **Scan speed** to the slowest rung your player is
+comfortable with. Nothing else needs changing, and settings save in the browser.
 
 - **Space** — next choice. **Enter** — pick it. **Hold Enter** — menu (it stays
   open). There is also a **Menu** row at the end of both shot lists — a round and
   the practice range — and a Pause button on screen, so reaching the menu never
-  depends on holding a switch down. One exception: during the flight animation
-  there is no list, so the only routes are the hold and the Pause button — and
-  the Pause button needs a pointer, it is not in the scan order. A switch-only
-  player who cannot hold cannot pause a flight. They wait it out.
+  depends on holding a switch down anywhere except the flight animation. There
+  the list is hidden, so the only routes are the 3 s hold and the Pause button,
+  and the Pause button needs a pointer — it is not in the scan order. A
+  switch-only player who cannot hold cannot pause a flight. The animation runs
+  three to six seconds, and turning **Animations** off in Settings removes it
+  altogether, and with it this gap.
 - Hold Space to scan backwards. **Auto Scan** (Settings) moves the highlight by
   itself, so a single switch on Enter is enough. Click/tap also works, and
   there is a hover-to-pick (dwell) mode for head- and eye-tracking users.
@@ -50,7 +56,7 @@ close enough to that line to be worth saying plainly.
   DESIGN.md gives the measured sizes and says where they fall short of the hub's
   64 px guidance.
 - Two six-hole courses, two-player pass-and-play, a practice range, and a
-  **Make a Hole** editor (pick length, hills, water, sand, wind — par comes
+  **Make a Hole** editor (pick length, ground, water, sand, wind — par comes
   from simulating your hole, and you can save ten).
 
 **Play it at [oddball.pages.dev](https://oddball.pages.dev)** — or run it
@@ -88,7 +94,8 @@ only.
 
 ## Development
 
-Needs Node 22+ and pnpm 10+.
+Needs Node 22+ and pnpm 10+. `pnpm layout-check` and `pnpm deploy` also need a
+chromium binary — `pnpm exec playwright install chromium`, once.
 
 ```sh
 pnpm install
@@ -100,7 +107,10 @@ pnpm editor-check   # composer clamps make every combo playable; samples 62 of 5
 pnpm input-check    # switch/scan grammar self-test
 pnpm menu-check     # pause menu / confirms / Auto Scan, through the real flow
 pnpm layout-check   # drives the built bundle in a browser across every text
-                    # scale and viewport tier; needs `pnpm build` first
+                    # scale and viewport tier; needs `pnpm build` first, and a
+                    # chromium binary: `pnpm exec playwright install chromium`
+                    # once. `playwright-core` is a library, not a downloader —
+                    # `pnpm install` does not fetch a browser.
 pnpm mutate         # breaks the shipped code one edit at a time; each must go red
                     # (this one WRITES to src/ and restores it — needs a clean tree)
 pnpm format         # biome, writes

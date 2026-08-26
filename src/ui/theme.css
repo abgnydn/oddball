@@ -534,7 +534,13 @@ body {
 	}
 
 	/* Only at large print — at ordinary sizes the legend costs one short line
-	   and is worth keeping. */
+	   and is worth keeping. 150 was missing from this list and from its
+	   width-keyed twin below, while the stacking rules above did include it. At
+	   150 % on a 280-310px wide, 561-589px tall window the legend took three
+	   lines, the footer grew to 233px, and the Pause button sat 15.4px outside
+	   the viewport with `body { overflow: hidden }` under it. One scale, present
+	   in one list and absent from its twin. */
+	:root[data-font='150'] .footer-legend,
 	:root[data-font='175'] .footer-legend,
 	:root[data-font='200'] .footer-legend {
 		display: none;
@@ -548,8 +554,22 @@ body {
    so nothing could scroll it back. Found one pixel past a tier boundary, which
    is the third time that has happened in this file. */
 @media (max-width: 560px) {
+	:root[data-font='150'] .footer-legend,
 	:root[data-font='175'] .footer-legend,
 	:root[data-font='200'] .footer-legend {
+		display: none;
+	}
+}
+
+/* And unconditionally below 400px, at any text size. The legend is one line of
+   hint text; on a 280-310px window it cannot be one line at any scale, and the
+   footer wraps it to three. Crossing 560px of height into 561 then took the
+   footer from 67px to 216.2px and pushed the document 1px past the viewport at
+   the shipped 125 % default. A hint that cannot fit on its line is not doing
+   its job, and it costs the Pause button. The keys are spoken and on the Help
+   page. */
+@media (max-width: 400px) {
+	.footer-legend {
 		display: none;
 	}
 }

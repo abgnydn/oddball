@@ -105,7 +105,7 @@ modules — so some contract items are met differently:
 | §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan. Most game-specific rows sit after both rather than before; one — Character names — sits with the speech rows instead, because it changes what speech says and nothing else |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled here (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
 | §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three ways.** Two numbers exist for every control and they are not the same: the `min-height` floor in the stylesheet, and the height the browser actually renders once padding, borders and line-height are added. The floors below are read from `theme.css`; the rendered heights are measured in a real browser. (1) The on-screen Pause button's floor is `min-height: 2.2rem`, so it tracks the text setting — rendered 38 px at 100 %, 44.6 px at the shipped 125 % default, then 52.8 / 61.6 / 70.4 px at 150 / 175 / 200 %. It first clears 64 px at 200 %. (2) On a viewport 560 px or shorter that floor becomes a flat 44 px, and there the button renders at exactly 44 px at **every** text scale — on a landscape phone it never reaches 64 px at all. (3) A scan row's 64 px floor survives only above 700 px of height **and** above 560 px of width. A short screen or a narrow one drops it to 56 px; 480 px of height or 360 px of width drops it to 44 px. On a 320x400 or 280x560 screen a plain row then renders at 44.4 px at every text scale — but not every row is plain: a shape row is 50 px, because the glyph and not the type sets its height, and a settings row whose value wraps to two lines is 66.8 px. Where no cap bites, rows are comfortably over: 65 px at 100 % and 124 px at 200 % on 1024x900. Each cap exists because the full-size control pushed itself or the footer off a short screen, and a target you cannot reach at all is worse than an undersized one — but they are departures, not compliance. `pnpm layout-check` measures all of it on every build |
-| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight — they can only wait it out |
+| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight. The animation runs 3-6 s (`MIN_PLAY_S`/`MAX_PLAY_S`), and turning Animations off removes the animated flight entirely, which removes this gap — but that is a setting the player has to find |
 | §5: `tutorial-modal.js` provides the shared how-to-play modal | not used, and not reimplemented as a modal. How to play is a scannable **Help** screen in the same list grammar as everything else. A standalone build cannot call `window.BennyTutorial`, and there is no video to embed |
 | §9: a focus label must be short — "it is read aloud at every scan step, and at a 1 s scan speed a long label becomes a drone" | the shape labels run about 4-10 s spoken at 160 wpm (`menu-check` prints the word counts; the range depends on the cast setting), and per-item focus labels deliberately do NOT hold the scan timer, so at any rung below their length the tail is not heard. Mitigated, not fixed: the yardage that decides the shot now comes FIRST (~1.9 s, inside the 2 s default), and the character blurb — which can be cut off without cost — comes after. `menu-check` asserts that order and that budget. At the 1 s rung nothing useful fits, and that is not solvable by wording |
 
@@ -247,7 +247,9 @@ Making it a setting instead is not done.
 ## Game rules
 
 - 6-hole course, played in order. Stroke count per hole; friendly score names vs par.
-- Max 8 strokes per hole, then "the ball takes a rest" and you move on (no fail state).
+- Max 8 strokes per hole, then the hole ends and you move on (no fail state).
+  The line says so plainly — it used to say "the ball takes a rest", which is a
+  euphemism aimed at an adult and the clearest §1 breach in the shipped default.
 - Each stroke: scan the shape rack → select a shape → short swing anticipation
   (no input) → flight plays out with sound + narration → result spoken
   ("Cube landed and stayed right there. Cube went 82 yards. 41 yards to the
@@ -348,22 +350,25 @@ measured value.
   the row's border box, so a row fully on screen can still have its ring cut off
   by the scrollport, which shipped: 12.4 px of the bottom stroke gone on the
   last settings row, on every viewport, while every row measured as unclipped.
-  It checks the Pause button is inside the viewport and the document does not
-  scroll sideways. Before the sweep it runs a self-test that forces a 4000 px
+  It checks the Pause button is inside the viewport and that the document
+  overflows in neither direction — the vertical half was missing until a footer
+  6 px outside the viewport, on a screen already being measured, went
+  unreported. Before the sweep it runs a self-test that forces a 4000 px
   row, a 4000 px-wide row, a 400 px ring on an unclipped row, and a Pause button
-  translated 9000 px down, and exits non-zero if any of the five detectors fails
+  translated 9000 px down, and exits non-zero if any of those four probes fails
   to fire: a detector that never fires cannot tell a clean build from a broken
   one. The grid is not a general sample — it enumerates BOTH corners where the
   tiers overlap: narrow-and-short, and mid-width-and-tall. The second was added
   after the first grid missed it entirely; every wide cell in it was ≥ 900 px
   and every short cell ≤ 400 px tall, so no cell existed where a tablet in
   portrait lives, and a rendering review found the longest label painting 132 px
-  outside its row while this harness reported ALL PASS. Two focused passes
-  follow the grid, for the two settings that change layout without changing
-  size: the thick highlight ring on the tightest viewports, and the character
-  names on the mid-width band. The thick-ring pass failed on its first run. It measures
-  at 200 % rather than 125 % because at 125 % a defective and a fixed Pause
-  button are both exactly 44 px.
+  outside its row while this harness reported ALL PASS. Four focused passes
+  follow the grid, for the settings that change layout without changing size and
+  for the tier boundaries: the thick highlight ring on the tightest viewports,
+  the character names on the mid-width band, every breakpoint at N and N+1, and
+  the shipped motion default. Two of the four failed on their first run. The
+  ring pass measures at 200 % as well as 125 %, because at 125 % a defective and
+  a fixed Pause button are both exactly 44 px.
 - `pnpm editor-check` — asserts the hole composer's clamps make every parameter
   combination playable, on a 62-of-540 sample. Described in full under **Modes**.
 - `pnpm input-check` — headless self-test of the switch/scan grammar state machines.
@@ -445,8 +450,15 @@ under the claim establishes. Every item below was one of those claims:
   scale; the pause menu, which is a second scrolling list; every in-round
   screen, which is where the header defect lived; the `max-width: 400px` tier,
   which the breakpoint parser silently dropped; and `reduceMotion: false`, the
-  shipped default, which every pass had hard-coded to true. An eighth has not
-  been ruled out.
+  shipped default, which every pass hard-coded to true — that one survived a
+  round after the parameter for fixing it was added, because a comment claimed
+  the fix in the past tense and nobody read the four literals under it. An
+  eighth has not been ruled out.
+- **`layout-check` measures five screens; the game has more.** The course
+  picker, the two-player picker, the hole editor, My Holes, the saved-hole menu
+  with its armed delete, the four Help pages and the two end-of-round summaries
+  are visited by no cell. That is not an unruled-out region — it is a known one,
+  and the last two live defects were both on screens the harness did not visit.
 - **A detector can be wrong in the direction of passing.** Three in this file
   have been silently inert at some point, and two measured the wrong box: one
   used the content box instead of the scrollport, one ignored the row's flex
@@ -497,7 +509,7 @@ under the claim establishes. Every item below was one of those claims:
   pixel threshold. The cost is real: hold perfectly still on a freshly rebuilt
   list and nothing selects until you move.
 - **Flight sonification**: a quiet tone glides with the ball's height (setting;
-  eyes-closed play). The cup beeper accelerates as a rolling ball closes in.
+  the screen not needed). The cup beeper accelerates as a rolling ball closes in.
 
 ## Persistence
 

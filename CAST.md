@@ -1,13 +1,11 @@
-# The cast (Layer 1.5)
+# The cast (optional character layer, off by default)
 
 > **This layer has not been read by the switch-access community it is written
-> for, and it went live in the hosted build anyway. It shipped unreviewed.** It is now a setting, **off by default** (Settings
-> → Character names), which is the flag that should have been there first; that
-> does not convert "shipped unreviewed" into "reviewed". The review still comes
-> before any submission to the NARBE library, and it decides whether the layer
-> stays — but "pending review" would describe a gate that was applied, and it
-> was not. Read the table
-> below with that in mind: "can't X, so they're great at Y" is a trope with a
+> for, and it went live in the hosted build anyway. It shipped unreviewed.** It
+> is now a setting, off by default (Settings → Character names), which is the
+> flag that should have been there first. The review still comes before any
+> submission to the NARBE library, and it decides whether the layer stays. Read
+> the table below with that in mind: "can't X, so they're great at Y" is a trope with a
 > long history of being written *about* disabled people rather than *by* them,
 > and three of the four mappings here are narrative applied to physics numbers
 > that already existed — the right-hand column says which.
@@ -40,7 +38,7 @@ not as a settled principle. Two of the six shapes are left unmapped.
 
 The four purposeful shapes are not ranked against each other; each has a hole
 where it is the right choice. The two gamble shapes are never the sober best
-line, by design — they win by luck. `pnpm holes` asserts both.
+line. They win by luck, by design. `pnpm holes` asserts both.
 
 ## The six
 
@@ -51,21 +49,20 @@ character was written onto it afterwards.
 
 | Shape | Name | Written as | Where the mechanic came from |
 |---|---|---|---|
-| Sphere | **Dot** | blind | Homing rollout: after her bounces settle, her roll bends toward the cup's beeper (bounded — see below). NEW sim mechanic, written for her. The only one. |
-| Cube | **Brick** | deaf | Lowest windSens + dead stop, already in tuning before the character existed. The link between deafness and wind is a pun, not a mapping. |
+| Sphere | **Dot** | blind | Homing rollout: after her bounces settle, her roll bends toward the cup's beeper (bounded — see below). NEW sim mechanic, written for her, and the only one in the table. |
+| Cube | **Brick** | deaf | Lowest windSens + dead stop, already in tuning before the character existed. The link between deafness and wind is a pun. It is not a mapping, and it is the weakest row in this table. |
 | Pancake | **Penny** | nonspeaking | High lob, lands soft, stays put. Narrative only: with the cast layer on, one soft tap (sfx) when she holes out, before the piano note. |
 | Disc | **Glide** | not walking | Longest reach; wind is their challenge. Already in tuning; no sim change. |
 | Star | **Boing** | no mapping | Chaos bounces. Deliberately unmapped. |
 | Egg | **Egg** | no mapping | Huge variance. Deliberately unmapped, comic relief. |
 
 The one disability the game wrote code for is Dot's, and the code turns it into
-a targeting advantage. That is the most criticisable thing in this file, and it
-belongs here rather than left to be found.
+a targeting advantage.
 
-Penny's blurb opens on the deficit in the published build — "Penny doesn't
-talk. She taps once for yes. She flies high, lands soft, and stays right
-there." — which this file's own rule forbids. What ships next puts the ability
-first and stops at the tap: "Penny flies high, lands soft, and stays right
+Penny's blurb opened on the deficit at 7c52b98 — "Penny doesn't talk. She taps
+once for yes. She flies high, lands soft, and stays right there." — which this
+file's own rule forbids. What ships now puts the ability first and stops at the
+tap: "Penny flies high, lands soft, and stays right
 there. She taps once for yes." The narrator's hole-out line stops there too. It
 used to add "That means yes", which is a hearing player being told what a
 nonspeaking character's one output means. That is not the game's to decide.
@@ -113,8 +110,12 @@ is off — same facts, no persona, no pronouns.
 - The narrator describes ability matter-of-factly ("Brick lands, and he stays.
   Wind moves him less than any other shape." — `tuning.ts`),
   never as overcoming-tragedy framing, never "despite."
-- Penny's celebrations are hers: the tap is the cheer. The narrator says
-  "Penny taps once. That means yes."
+- With the cast layer on, Penny's hole-out plays one soft tap sound and the
+  narrator says "Penny taps once." It used to add "That means yes"; see above.
+  She is the only character whose celebration is described rather than felt —
+  Brick is "very pleased", Boing "bounces with joy" — and that asymmetry follows
+  from not translating her output. It is worth a reader's attention rather than
+  a defence.
 - Score lines and outcome lines refer to characters by name, not by shape word —
   with the setting on. With it off they use the plain name, the hole-out line
   ends at "In the cup!", the practice range says "Pancake went 145 yards!"
@@ -131,6 +132,5 @@ That ask has not been made, and nobody there has agreed to do it.
 
 It should have been shown to them before it went live on the public build, and
 it was not. It is now behind a setting that defaults off, which is what should
-have happened first — but that is a correction after the fact, not the process
-this section describes. Shipping first and asking after is what occurred, and
-this file should not read as though it were otherwise.
+have happened first, and that is a correction after the fact rather than the
+process this section describes.

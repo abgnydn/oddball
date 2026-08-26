@@ -94,7 +94,7 @@ export const helpPages = (characters: boolean): Array<{ label: string; speak: st
 	{
 		label: 'Scoring',
 		speak:
-			'Each hit is one shot. Fewer shots is better. Par is a good score for the hole. Get the ball close to the cup and it counts as in. There is no way to lose. Have fun.',
+			'Each hit is one shot. Fewer shots is better. Par is a good score for the hole. Get the ball close to the cup and it counts as in. There is no way to lose.',
 	},
 ]
 
@@ -204,7 +204,11 @@ export const scoreLine = (strokes: number, par: number): string => {
 	return `${strokes} shots. ${diff} over par.`
 }
 
-export const REST_LINE = `That is ${MAX_STROKES} shots. The ball takes a rest. On to the next hole.`
+// Not "the ball takes a rest": §1 says the player "is not a child, and should
+// not be talked to like one", and a euphemism for the stroke cap is the clearest
+// place this build was doing that. It ships in both cast modes, which is why the
+// §1 departures row scoping the question to the cast layer was too narrow.
+export const REST_LINE = `That is ${MAX_STROKES} shots. That is the limit for this hole. On to the next hole.`
 
 export const summaryLine = (strokes: number[], pars: number[]): string => {
 	const total = strokes.reduce((s, v) => s + v, 0)

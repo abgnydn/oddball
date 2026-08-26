@@ -832,7 +832,47 @@ const checklistTallyChecks = () => {
 		(r) => r.includes('different route') && !r.includes('not met'),
 	).length
 	const met = rows.length - notMet - different
-	check('the §10 table has all 18 of the contract items', rows.length === 18, `${rows.length} rows`)
+	// A distinctive fragment of each §10 item, transcribed from the contract at
+	// bennyshub/ACCESSIBILITY.md §10 (fetched 2026-08-26). This used to be
+	// `rows.length === 18` under a label claiming it checked the contract items —
+	// a reviewer replaced two real rows with "Free ice cream for every player",
+	// kept the count at 18, and the harness certified the table. The label made a
+	// claim the check did not test, in the repo whose own DESIGN.md section is
+	// about exactly that.
+	const CONTRACT_10 = [
+		'Space and Enter only',
+		'Enter alone',
+		'fire on **release**',
+		'Holding Space scans backwards',
+		'Holding Enter opens pause',
+		'on-screen Pause button',
+		'Settings reachable from **both**',
+		'Auto Scan and Scan Speed present',
+		'TTS reads focus, selection and outcomes',
+		'`SafeAudio`',
+		'Reset Progress is two-step',
+		'focusBackButton',
+		'no interaction requires a drag',
+		'spoken confirm dialog',
+		'Progress saves and resumes',
+		'Readable at 100 % on a tablet',
+		'games.json',
+		'one switch, by someone who is not you',
+	]
+	check('the §10 table has 18 rows', rows.length === CONTRACT_10.length, `${rows.length} rows`)
+	for (const item of CONTRACT_10) {
+		check(
+			`§10 item present in the table: ${item.slice(0, 34)}`,
+			rows.some((r) => r.includes(item)),
+			'missing',
+		)
+	}
+	// `met` is a residual (rows - notMet - different), so a row with no verdict
+	// at all was silently counted as met. Every row must state one.
+	const verdictless = rows.filter(
+		(r) => !r.includes('not met') && !r.includes('different route') && !/\bmet\b/.test(r),
+	)
+	check('every §10 row states a verdict', verdictless.length === 0, verdictless.join(' | '))
 	const stated = section.match(/\*\*(\d+) met, (\d+) met by a different route, (\d+) not met\*\*/)
 	check('DESIGN.md states a §10 tally in the documented form', stated !== null, '')
 	if (stated) {
@@ -847,11 +887,52 @@ const checklistTallyChecks = () => {
 // CAST.md reprints all six blurbs verbatim, and a hand-copied string is a
 // string that drifts. Every round so far a lens has had to check these by hand;
 // this makes the file hold itself to the code.
+const HOLED_FLAVOR_TEXT: Partial<Record<string, string>> = Object.fromEntries(
+	SHAPE_ORDER.map((id) => {
+		const holed: StrikeOutcome = {
+			points: [],
+			events: [],
+			end: { x: 100, lie: 'green' },
+			holed: true,
+			water: false,
+			carry: 100,
+			total: 100,
+		}
+		const line = L.narrate(holed, id, COURSES[0]?.holes[0] as HoleSpec, true)
+		return [id, line.replace(/^In the cup!\s*/, '')]
+	}),
+)
+
 const castDocQuoteChecks = () => {
 	const doc = readFileSync(join(REPO_ROOT, 'CAST.md'), 'utf8')
 	const section = doc.split('## Rack blurbs')[1]?.split('\n## ')[0] ?? ''
 	const quoted = [...section.matchAll(/^- \w+: "(.+)"$/gm)].map((m) => m[1] as string)
 	check('CAST.md reprints all six blurbs', quoted.length === SHAPE_ORDER.length, `${quoted.length}`)
+
+	// The WHOLE file, not just the blurb list. The narrator's hole-out line was
+	// quoted in "Narration rules" with a clause the code had dropped — the third
+	// time that exact sentence came back, and the section check could not see it
+	// because it was scoped to "## Rack blurbs". Any quoted string in CAST.md
+	// that starts like a shipped cup line must BE the shipped cup line.
+	const allQuotes = [...doc.matchAll(/"([^"\n]{12,})"/g)].map((m) => m[1] as string)
+	// A shared PREFIX, not a shared opening word. Two words matched blurb text
+	// too ("Brick is deaf" against "Brick is very pleased."), and a check that
+	// cries wolf gets deleted. A quote that shares 15+ characters and half the
+	// line with a shipped cup line is quoting that line, and must match it.
+	const sharedPrefix = (a: string, b: string): number => {
+		let i = 0
+		while (i < a.length && i < b.length && a[i] === b[i]) i++
+		return i
+	}
+	for (const id of SHAPE_ORDER) {
+		const shipped = HOLED_FLAVOR_TEXT[id]
+		if (shipped === undefined) continue
+		for (const q of allQuotes) {
+			const n = sharedPrefix(q, shipped)
+			if (n < 15 || n < shipped.length / 2) continue
+			check(`CAST.md's quote of ${id}'s cup line matches the code`, q === shipped, `${q}`)
+		}
+	}
 	for (const id of SHAPE_ORDER) {
 		check(
 			`${id}: CAST.md's blurb is byte-identical to tuning.ts`,
