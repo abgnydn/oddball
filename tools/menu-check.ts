@@ -43,7 +43,8 @@ import type { Hud, HudItemSpec } from '../src/ui/hud'
 let failures = 0
 // The bundle runs from node_modules/.cache; pnpm runs a script with the
 // package root as cwd, so that is the only reliable anchor.
-const SRC = join(process.cwd(), 'src')
+const REPO_ROOT = process.cwd()
+const SRC = join(REPO_ROOT, 'src')
 
 const results: Array<[string, boolean, string]> = []
 const check = (name: string, ok: boolean, detail = '') => {
@@ -763,6 +764,93 @@ const courseFocusChecks = () => {
 	)
 }
 
+// ---------- 5a1. the published markdown actually renders ----------
+
+// A GFM table ends at the first blank line. Inserting a paragraph between two
+// rows silently drops every row after it — they render as literal pipe text.
+// That shipped in CAST.md: half the cast table, in the file the README points
+// at, on the page that argues the layer was written carefully. Nobody read the
+// rendered output, because nothing rendered it.
+const markdownChecks = () => {
+	const docs = readdirSync(REPO_ROOT).filter((f) => f.endsWith('.md'))
+	check('there are markdown documents to check', docs.length >= 3, docs.join(', '))
+	for (const doc of docs) {
+		const lines = readFileSync(join(REPO_ROOT, doc), 'utf8').split('\n')
+		const runs: number[][] = []
+		let cur: number[] = []
+		lines.forEach((l, i) => {
+			if (l.trimStart().startsWith('|')) cur.push(i + 1)
+			else if (cur.length > 0) {
+				runs.push(cur)
+				cur = []
+			}
+		})
+		if (cur.length > 0) runs.push(cur)
+		const orphans = runs.filter((run) => {
+			const second = lines[run[1]! - 1] ?? ''
+			// a real table's second line is the delimiter row
+			return !/^\s*\|[\s:|-]+\|\s*$/.test(second)
+		})
+		check(
+			`${doc}: every table is one unbroken block`,
+			orphans.length === 0,
+			orphans.map((r) => `rows starting at line ${r[0]} have no delimiter row`).join('; '),
+		)
+	}
+}
+
+// DESIGN.md states a tally over the §10 checklist table, and a tally in prose
+// beside a table it summarises is a number that drifts — this one has been
+// wrong twice, once contradicting a paragraph 25 lines below it. The table is
+// the source; this parses it and holds the sentence to it.
+const checklistTallyChecks = () => {
+	const doc = readFileSync(join(REPO_ROOT, 'DESIGN.md'), 'utf8')
+	const section = doc.split('### §10, the shipping checklist')[1] ?? ''
+	// Only the FIRST contiguous table in the section. Filtering the whole section
+	// for pipe lines swept in the departures table below it and reported 25 rows.
+	const lines = section.split('\n')
+	const start = lines.findIndex((l) => l.startsWith('| §10 item'))
+	const rows: string[] = []
+	for (let i = start + 1; i < lines.length; i++) {
+		const l = lines[i] ?? ''
+		if (!l.startsWith('| ')) break
+		if (l.startsWith('| ---')) continue
+		rows.push(l)
+	}
+	const notMet = rows.filter((r) => r.includes('not met')).length
+	const different = rows.filter(
+		(r) => r.includes('different route') && !r.includes('not met'),
+	).length
+	const met = rows.length - notMet - different
+	check('the §10 table has all 18 of the contract items', rows.length === 18, `${rows.length} rows`)
+	const stated = section.match(/\*\*(\d+) met, (\d+) met by a different route, (\d+) not met\*\*/)
+	check('DESIGN.md states a §10 tally in the documented form', stated !== null, '')
+	if (stated) {
+		check(
+			'the stated §10 tally matches the table it summarises',
+			Number(stated[1]) === met && Number(stated[2]) === different && Number(stated[3]) === notMet,
+			`states ${stated[1]}/${stated[2]}/${stated[3]}, table has ${met}/${different}/${notMet}`,
+		)
+	}
+}
+
+// CAST.md reprints all six blurbs verbatim, and a hand-copied string is a
+// string that drifts. Every round so far a lens has had to check these by hand;
+// this makes the file hold itself to the code.
+const castDocQuoteChecks = () => {
+	const doc = readFileSync(join(REPO_ROOT, 'CAST.md'), 'utf8')
+	const section = doc.split('## Rack blurbs')[1]?.split('\n## ')[0] ?? ''
+	const quoted = [...section.matchAll(/^- \w+: "(.+)"$/gm)].map((m) => m[1] as string)
+	check('CAST.md reprints all six blurbs', quoted.length === SHAPE_ORDER.length, `${quoted.length}`)
+	for (const id of SHAPE_ORDER) {
+		check(
+			`${id}: CAST.md's blurb is byte-identical to tuning.ts`,
+			quoted.includes(SHAPES[id].blurb),
+			SHAPES[id].blurb,
+		)
+	}
+}
+
 // ---------- 5a2. no ungated reader of a cast string ----------
 
 // This one reads the SOURCE, not the behaviour, and it exists because the
@@ -783,10 +871,16 @@ const castSourceChecks = () => {
 		'characters ? SHAPES[id].name : SHAPES[id].plainName',
 		'characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb',
 	])
-	const files = readdirSync(join(SRC, 'game'))
-		.filter((f) => f.endsWith('.ts'))
-		.map((f) => join(SRC, 'game', f))
-		.concat([join(SRC, 'ui', 'hud.ts'), join(SRC, 'main.ts')])
+	// EVERY .ts under src/, walked recursively. It used to be src/game/*.ts plus
+	// two files, while three documents said it greps "src/" — so render/draw.ts,
+	// which already draws each shape's glyph and is the obvious home for a
+	// painted label, was outside it. The argument for this check is that a grep
+	// cannot forget; a hand-listed subset can.
+	const walk = (dir: string): string[] =>
+		readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+			e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith('.ts') ? [join(dir, e.name)] : [],
+		)
+	const files = walk(SRC)
 	const leaks: string[] = []
 	for (const file of files) {
 		const lines = readFileSync(file, 'utf8').split('\n')
@@ -803,6 +897,46 @@ const castSourceChecks = () => {
 		'no code outside shapeName()/shapeBlurb() reads a cast string',
 		leaks.length === 0,
 		leaks.join(' | '),
+	)
+	check(
+		'the source check actually walked the whole tree',
+		files.length >= 12 &&
+			files.some((f) => f.includes('render/')) &&
+			files.some((f) => f.includes('input/')),
+		`${files.length} files scanned`,
+	)
+
+	// Reading a cast string is not the only way to speak one. The third and
+	// fourth leaks found in this file were literals: a menu row that said
+	// "meet the team" in both modes, and a help line that called the shapes
+	// "friends". A name-reader check is structurally blind to a typed-out
+	// phrase, so the phrases get their own list.
+	const CAST_PHRASES = [/meet the team/i, /\bfriends?\b/i]
+	// "Play with a friend" is the two-player mode. It is a person, not a shape.
+	const PHRASE_ALLOWED = [/play with a friend/i, /friendly/i]
+	const phraseLeaks: string[] = []
+	for (const file of files) {
+		readFileSync(file, 'utf8')
+			.split('\n')
+			.forEach((line, i) => {
+				const t = line.trim()
+				if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return
+				if (t.includes('characters')) return
+				// Only what is inside a quote can be spoken. Without this the check
+				// fires on `id === 'friend'`, which is a mode id in a switch.
+				const literals = line.match(/'[^']*'|"[^"]*"|`[^`]*`/g) ?? []
+				for (const lit of literals) {
+					if (lit.length < 12) continue // an id, not a sentence
+					if (!CAST_PHRASES.some((r) => r.test(lit))) continue
+					if (PHRASE_ALLOWED.some((r) => r.test(lit))) continue
+					phraseLeaks.push(`${file.replace(SRC, 'src')}:${i + 1}: ${lit}`)
+				}
+			})
+	}
+	check(
+		'no ungated cast phrase in a player-facing string',
+		phraseLeaks.length === 0,
+		phraseLeaks.join(' | '),
 	)
 	// ...and the check is worthless if the accessors moved, so prove it can see them.
 	const seen = readFileSync(join(SRC, 'game', 'lines.ts'), 'utf8')
@@ -933,6 +1067,9 @@ const main = async () => {
 	await watchdogChecks()
 	settingsSpeechChecks()
 	courseFocusChecks()
+	markdownChecks()
+	checklistTallyChecks()
+	castDocQuoteChecks()
 	castSourceChecks()
 	castLayerChecks()
 	focusOrderChecks()

@@ -25,6 +25,10 @@ const SC = 'src/input/scanner.ts'
 const FL = 'src/game/flow.ts'
 const TT = 'src/speech/tts.ts'
 const LN = 'src/game/lines.ts'
+// The docs are shipped artifacts too — they go up in the same push, and three of
+// the defects this project has had to fix were sentences, not code.
+const CAST = 'CAST.md'
+const DESIGN = 'DESIGN.md'
 
 interface Mutation {
 	name: string
@@ -225,6 +229,68 @@ MUTATIONS.push(
 				'\t\t\t(id) => `${shapeName(id, characters)}. ${shapeBlurb(id, characters)}`,',
 				'\t\t\t(id) => `${SHAPES[id].name}. ${SHAPES[id].blurb}`,',
 			],
+		],
+	},
+)
+
+MUTATIONS.push(
+	{
+		// Shipped, and found by all five verification lenses at once. The page
+		// this row opens is gated; the row that describes it was not, so the
+		// main menu said "meet the team" to a player who had the cast off.
+		name: 'lines: the title row says "meet the team" in both modes',
+		harness: 'menu-check',
+		edits: [
+			[
+				LN,
+				"\thelpSpeak: 'How to Play. Learn the game and the shapes.',",
+				"\thelpSpeak: 'How to Play. Learn the game and meet the team.',",
+			],
+		],
+	},
+	{
+		// Same class: a persona word typed into a line, invisible to a check
+		// that looks for readers of the cast strings.
+		name: 'lines: the help body calls the shapes friends',
+		harness: 'menu-check',
+		edits: [
+			[
+				LN,
+				'Pick the right shape for the right moment.',
+				'Pick the right friend for the right moment.',
+			],
+		],
+	},
+)
+
+MUTATIONS.push(
+	{
+		// A quoted blurb drifting from the code it quotes. Every round so far a
+		// reviewer has had to diff these by hand.
+		name: 'CAST.md: a reprinted blurb drifts from tuning.ts',
+		harness: 'menu-check',
+		edits: [[CAST, 'Brick lands, and he stays.', 'Brick lands and stays.']],
+	},
+	{
+		// The §10 tally, stated in prose beside the table it summarises. It has
+		// been wrong twice, once contradicting a paragraph 25 lines below it.
+		name: 'DESIGN.md: the §10 tally stops matching its table',
+		harness: 'menu-check',
+		edits: [
+			[
+				DESIGN,
+				'**7 met, 3 met by a different route, 8 not met**',
+				'**8 met, 4 met by a different route, 6 not met**',
+			],
+		],
+	},
+	{
+		// A paragraph wedged between two table rows. This shipped: a blank line
+		// ends a GFM table, so half the cast rendered as literal pipe text.
+		name: 'CAST.md: a paragraph splits a table',
+		harness: 'menu-check',
+		edits: [
+			[CAST, '| Disc | **Glide**', '\nA paragraph wedged between two rows.\n\n| Disc | **Glide**'],
 		],
 	},
 )

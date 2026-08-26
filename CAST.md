@@ -22,10 +22,14 @@ strings without consulting the setting: the practice range's narration, and this
 file's own contents by way of the Help page's "Meet the team", which was a
 module-level constant and so could not consult a setting even in principle. A
 player who turned the layer off could still be told "Brick is deaf" and "Glide
-does not walk". Both are gated now, `menu-check` covers the range, the Help page
-and the rack in both modes, and it greps the source for any new ungated reader —
-because the two behavioural checks written for this missed both sites, and a
-grep does not depend on remembering that a call site exists.
+does not walk". There were four in the end: those two, the main-menu row that
+opened the Help page (it said "meet the team" in both modes), and a help line
+that called the shapes "friends". All four are gated now. `menu-check` covers
+the rack, the range and the Help page in both modes, greps every file under
+`src/` for a new ungated reader, and greps separately for cast phrases typed
+into a string — because the behavioural checks written for this missed the
+sites their author had not thought of, and a grep does not depend on
+remembering that a call site exists.
 
 The design rule this layer was built on — and the thing the review above has to
 rule on — is that no character's disability makes them worse at the game: the
@@ -46,16 +50,19 @@ choice. The gamble shapes win by luck by design; the harness asserts only that.
 | Sphere | **Dot** | Blind — hears everything | Homing rollout: after her bounces settle, her roll bends toward the cup's beeper (bounded — see below). NEW sim mechanic. |
 | Cube | **Brick** | Deaf — the wind can't trick him | Lowest windSens + dead stop. Already true in tuning; zero sim change. |
 | Pancake | **Penny** | Nonspeaking — taps once for yes | High lob, lands soft, stays put. Narrative only: when Penny holes out, one soft tap (sfx) before the piano note; the narrator waits for it. |
-
-The blurb used to end "she taps once for yes — **she says what she needs to**".
-That last clause was cut: it is a judgement that a one-bit yes/no output is
-sufficient communication, made on a nonspeaking character's behalf, spoken aloud
-to an audience that includes nonspeaking players and the people who support
-them. AAC practice starts from the opposite premise. The tap can be Penny's
-without the game ruling on whether it is enough.
 | Disc | **Glide** | Doesn't walk — flies | Longest reach, wind is their challenge. Aspirational mapping, no sim change. |
 | Star | **Boing** | none — pure joy | Chaos bounces. Deliberately unmapped. |
 | Egg | **Egg** | none — pure luck | Huge variance. Deliberately unmapped, comic relief. |
+
+Penny's blurb changed twice. The published build says "Penny doesn't talk. She
+taps once for yes. She flies high, lands soft, and stays right there." — it
+opens on the deficit, which this file's own rule forbids. The rewrite put the
+ability first, but ended "she taps once for yes — she says what she needs to".
+That clause was cut before it reached anyone: it is a judgement that a one-bit
+yes/no output is sufficient communication, made on a nonspeaking character's
+behalf and spoken aloud to an audience that includes nonspeaking players. AAC
+practice starts from the opposite premise. What ships is "Penny flies high,
+lands soft, and stays right there. She taps once for yes." and nothing after.
 
 ## Rack blurbs (spoken on focus with the cast layer on)
 

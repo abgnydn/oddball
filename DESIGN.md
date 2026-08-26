@@ -103,7 +103,7 @@ modules — so some contract items are met differently:
 | §5/§10: Auto Scan and Scan Speed come from `NarbeScanManager`, so "a player configures their access once, not twenty times" | its own copies, saved under `oddball-save-v1`. Someone who set their scan speed in the hub sets it again here |
 | §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan. Most game-specific rows sit after both rather than before; one — Character names — sits with the speech rows instead, because it changes what speech says and nothing else |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled here (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
-| §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three ways.** Two numbers exist for every control and they are not the same: the `min-height` floor in the stylesheet, and the height the browser actually renders once padding, borders and line-height are added. The floors below are read from `theme.css`; the rendered heights are measured in a real browser. (1) The on-screen Pause button's floor is `min-height: 2.2rem`, so it tracks the text setting — rendered 38 px at 100 %, 44.6 px at the shipped 125 % default, then 52.8 / 61.6 / 70.4 px at 150 / 175 / 200 %. It first clears 64 px at 200 %. (2) On a viewport 560 px or shorter that floor becomes a flat 44 px, and there the button renders at exactly 44 px at **every** text scale — on a landscape phone it never reaches 64 px at all. (3) A scan row's 64 px floor survives only above 700 px of height **and** above 560 px of width. A short screen or a narrow one drops it to 56 px; 400 px of height or 360 px of width drops it to 44 px, and a 320x400 or 280x560 screen renders every row at 44.4 px whatever the text scale. Where no cap bites, rows are comfortably over: 65 px at 100 % and 124 px at 200 % on 1024x900. Each cap exists because the full-size control pushed itself or the footer off a short screen, and a target you cannot reach at all is worse than an undersized one — but they are departures, not compliance. `pnpm layout-check` measures all of it on every build |
+| §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three ways.** Two numbers exist for every control and they are not the same: the `min-height` floor in the stylesheet, and the height the browser actually renders once padding, borders and line-height are added. The floors below are read from `theme.css`; the rendered heights are measured in a real browser. (1) The on-screen Pause button's floor is `min-height: 2.2rem`, so it tracks the text setting — rendered 38 px at 100 %, 44.6 px at the shipped 125 % default, then 52.8 / 61.6 / 70.4 px at 150 / 175 / 200 %. It first clears 64 px at 200 %. (2) On a viewport 560 px or shorter that floor becomes a flat 44 px, and there the button renders at exactly 44 px at **every** text scale — on a landscape phone it never reaches 64 px at all. (3) A scan row's 64 px floor survives only above 700 px of height **and** above 560 px of width. A short screen or a narrow one drops it to 56 px; 400 px of height or 360 px of width drops it to 44 px. On a 320x400 or 280x560 screen a plain row then renders at 44.4 px at every text scale — but not every row is plain: a shape row is 50 px, because the glyph and not the type sets its height, and a settings row whose value wraps to two lines is 66.8 px. Where no cap bites, rows are comfortably over: 65 px at 100 % and 124 px at 200 % on 1024x900. Each cap exists because the full-size control pushed itself or the footer off a short screen, and a target you cannot reach at all is worse than an undersized one — but they are departures, not compliance. `pnpm layout-check` measures all of it on every build |
 | §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight — they can only wait it out |
 | §5: `tutorial-modal.js` provides the shared how-to-play modal | not used, and not reimplemented as a modal. How to play is a scannable **Help** screen in the same list grammar as everything else. A standalone build cannot call `window.BennyTutorial`, and there is no video to embed |
 | §9: a focus label must be short — "it is read aloud at every scan step, and at a 1 s scan speed a long label becomes a drone" | the shape labels run 6-10 s spoken, and per-item focus labels deliberately do NOT hold the scan timer, so at any rung below their length the tail is not heard. Mitigated, not fixed: the yardage that decides the shot now comes FIRST (~1.9 s, inside the 2 s default), and the character blurb — which can be cut off without cost — comes after. `menu-check` asserts that order and that budget. At the 1 s rung nothing useful fits, and that is not solvable by wording |
@@ -112,31 +112,35 @@ modules — so some contract items are met differently:
 
 This is the list the README's summary points at; it used to say "roughly half
 unmet" with nothing behind it. §10 has 18 items. Counting the table below:
-**8 met, 4 met by a different route, 6 not met.** Anyone quoting a ratio should
-count the rows rather than trust this sentence.
+**7 met, 3 met by a different route, 8 not met** — where "different route" means
+the behaviour is equivalent but the shared module it is supposed to come from
+does not exist in a standalone build, and nothing else. One of the 7 is met by
+harness only, never by a switch user; the last row says which. Count the rows;
+this sentence is a summary of them and summaries drift.
 
 | §10 item | This build |
 | --- | --- |
 | Every action reachable with **Space and Enter only** | met (`input-check`, `menu-check`) |
 | Every action reachable with **Enter alone**, Auto Scan on | met by harness. Never by a switch user — see the last row |
 | Menu actions fire on **release**, not press | met (`switch.ts` emits on keyup; `input-check` asserts it) |
-| Holding Space scans backwards, repeating at the player's scan speed from `NarbeScanManager` | **different route.** The behaviour matches; the speed comes from this build's own saved setting, because there is no `NarbeScanManager` to read |
+| Holding Space scans backwards "in every menu", repeating at the player's scan speed from `NarbeScanManager` — "not a rate you picked" | **different route.** Every menu, at the player's saved speed. The speed comes from this build's own copy of that setting, because there is no `NarbeScanManager` to read |
 | Holding Enter opens pause from anywhere in gameplay, with a visible and audible indication while holding | **not met.** The hold works everywhere including flight, but nothing indicates progress during it. §4 asks for the same thing and the row above says so |
 | An on-screen Pause button does the same | met |
-| Settings reachable from **both** the main menu and the pause menu | **different route.** Both, except during the flight animation, where the item is hidden |
+| Settings reachable from **both** the main menu and the pause menu | **not met.** Both, except during the flight animation, where the item is hidden. "Different route" would mean equivalent behaviour reached another way; this is one place it is not reachable |
 | Auto Scan and Scan Speed present, reading from `NarbeScanManager` | **different route.** Present, from this build's own copies |
 | TTS reads focus, selection and outcomes, via `NarbeVoiceManager` | **different route.** All three are read; the engine is raw `speechSynthesis` |
 | Sound through `SafeAudio` — no `AudioContext` | **not met.** WebAudio, for the flight tone and the cup beeper |
 | Reset Progress is two-step | **not met.** There is no Reset Progress item at all. Saved holes delete individually, two-step |
 | Exit Game sends `postMessage({ action: 'focusBackButton' })` | **not met.** This build has no Exit Game — "Exit to menu" returns to its own title |
 | Mouse and touch work everywhere, no interaction requires a drag | met |
-| Anything mouse-only or off-site sits behind a spoken confirm dialog | met, vacuously: nothing here is mouse-only and nothing leaves the page. The editor is fully scannable, which is what §7's one-way-door warning is for |
+| Anything mouse-only or off-site sits behind a spoken confirm dialog, "with Cancel first in the scan order and the scan trapped in the dialog" | **not met.** The trigger does not arise — nothing here is mouse-only and nothing leaves the page, and the editor is fully scannable — but this build does have two-step confirms, and they do not follow the shape §10 asks for: in the saved-hole menu the cancel route ("Back") is **last** in the scan order, and the scan is not trapped in the prompt |
 | Progress saves and resumes | met (`oddball-save-v1`; Continue on the title screen) |
 | Readable at 100 % on a tablet | met (`layout-check`) |
 | Added to `apps/games/games.json` with a thumbnail and genres | **not met.** Not submitted. That waits on the CAST.md review |
 | **Played start to finish with one switch, by someone who is not you** | **not met.** §10 calls this "the only test that actually counts" |
 
-Two items are met by a different route rather than skipped: the pause menu has
+Two of those rows deserve their reasoning spelled out, because the table only
+has room for a verdict. The pause menu has
 both an on-screen Pause button and a scannable **Menu** row on both gameplay
 lists — the shot rack and the practice range — so
 a player who cannot sustain a 3 s hold still reaches settings, a new round and
@@ -174,10 +178,14 @@ Making it a setting instead is not done.
   which could not consult the setting even in principle and read out "Brick is
   deaf" and "Glide does not walk" to a player who had the layer off. Behavioural
   checks did not catch either, because a behavioural check can only test the
-  call sites its author remembered. `menu-check` now also greps `src/` for any
-  read of a shape's `.name` or `.blurb` outside those two accessors, and fails
-  on a new one. That check has its own non-vacuity assertion, because an
-  allowlist that stops matching is a check that always passes. Old saves get `false` for free:
+  call sites its author remembered. There turned out to be four leaks, not two:
+  those plus the main-menu row that opened the Help page — which said "meet the
+  team" in both modes — and a help line that called the shapes "friends".
+  `menu-check` now greps every `.ts` under `src/`, walked recursively, for a
+  read of a shape's `.name` or `.blurb` outside the two accessors, and greps
+  separately for a cast phrase typed into a string, which a name-reader check
+  cannot see. Both have non-vacuity assertions: if the allowlist stops matching
+  or the walk stops finding files, the check passes for every input. Old saves get `false` for free:
   `mergeSettings` starts from `DEFAULT_SETTINGS` and only takes keys the saved
   object actually has.
 - All text lives in `src/game/lines.ts`: short sentences, common words, numbers in
@@ -204,23 +212,30 @@ Making it a setting instead is not done.
   and an on-screen **Pause** button (pointer/touch parity with holding Enter).
   The button is not in the scan order; the scannable route is the Menu row at
   the end of each gameplay list (the shot rack and the practice range).
-- The scan list and the course view sit side by side, until they cannot. Below
-  560 px of width the layout stacks and the list takes the full width; it also
-  stacks at large print on a mid-width window, because the side-by-side panel is
-  sized `clamp(min(16rem, 46vw), 34%, 30rem)` and `46vw` ignores the text
-  setting entirely — on a 600 px window at 200 % the longest label needs 307 px
-  and gets 276. The stack breakpoints (900 px at 150 %+ and 640 px at 125 %) are
-  the measured edge of that defect plus margin, swept at 25 px steps; they are
-  enforced by `layout-check`, so a wrong one fails the harness rather than
-  shipping.
+- The scan list and the course view sit side by side above 900 px of width.
+  Below that the layout stacks and the list takes the full width — always under
+  560 px, and under 900 px whenever text is above 100 %.
+  The reason is a defect worth recording, because the fix for it was wrong twice
+  before it was right. The panel was sized `clamp(min(16rem, 46vw), 34%, 30rem)`.
+  `16rem` tracks the text setting, because rem follows `--font-scale`; `46vw`
+  does not, and `min()` let the one that ignores text win. On a 600 px window at
+  200 % the panel came out 276 px and the longest label overran its row by
+  132 px. The first fix capped the row's padding, which only moved the overrun
+  somewhere the detector could not see. The second added two stack breakpoints,
+  900 px and 640 px; the 640 was 17 px inside the band it was meant to avoid,
+  and both numbers came from a sweep run with a detector that ignored the row's
+  flex gap. With the gap counted the 900 was wrong too — the real edge at 200 %
+  is about 940 px. What is there now is one breakpoint and a fixed lower bound
+  (`55vw` instead of `46vw`), so the panel cannot be starved by a viewport share
+  at any width the side-by-side layout applies to.
 - The highlight ring's reach outside the row — outline width plus offset — is
   defined once as `--hl-reach` and consumed by the scroll padding that keeps it
   on screen. It was three hard-coded numbers that had drifted apart. On screens
   under 400 px tall or 360 px wide the offset drops to 0, and the **thick**
   setting is served the medium width: a 12 px ring cannot be drawn whole on a
-  320x320 panel at 200 % text, and a thick ring with a missing edge is not a
-  thicker ring. That overrides a player's explicit setting, which is a real
-  cost; it buys the thickest ring that closes.
+  320x320 panel at 200 % text, and a thick ring missing an edge reads as thinner
+  than the medium one. That overrides a player's explicit setting, which is a
+  real cost; it buys the thickest ring that closes.
 - Big shapes, thick trajectory line, no clutter. Reduce-motion setting: flight is
   summarized (ball drawn at end position, events spoken) instead of animated.
 
@@ -230,7 +245,8 @@ Making it a setting instead is not done.
 - Max 8 strokes per hole, then "the ball takes a rest" and you move on (no fail state).
 - Each stroke: scan the shape rack → select a shape → short swing anticipation
   (no input) → flight plays out with sound + narration → result spoken
-  ("The cube went 82 yards and stopped dead. 41 yards to the cup.").
+  ("Cube landed and stayed right there. Cube went 82 yards. 41 yards to the
+  cup." — executed, not paraphrased; with the cast on the name is "Brick").
 - The golfer always aims at the cup and strikes with sensible force for the distance
   (capped by the shape's reach). The SHAPE determines what actually happens.
 - Cup is generous: ball at rest within `GIMME_M` of the cup = holed. No putting grind.
@@ -400,11 +416,38 @@ path and asserted the wrong contract, so a green harness certified the wrong
 behaviour: it encoded the wrong contract. And the cast setting shipped with two
 ungated readers — the practice range and the Help page — in `lines.ts`, a file
 three harnesses import, because every check written for it tested the call sites
-its author remembered, and the defect was forgetting two others. `menu-check`
-now greps the source for readers of a cast string instead, which is the one
-thing that cannot forget.
+its author remembered, and the defect was forgetting the others — four in the
+end. `menu-check` now greps every file under `src/` instead, for readers of a
+cast string and for cast phrases typed into one. A grep does not depend on a
+call site being remembered.
 - Harness failures are exit-code failures with a printed table. These are the safety
   net — tune `tuning.ts` until they pass; never weaken an assertion to pass.
+
+### What the harnesses do NOT establish
+
+Written down because the recurring defect in this repo is not a broken check,
+it is a sentence wider than the check under it. Every item below was a claim
+this document made before a review measured it:
+
+- **"Every row" means every row the grid visits.** `layout-check` enumerates
+  viewports; it does not prove a property for all viewports. Four separate
+  regions have been missed so far — the narrow-and-short corner, the
+  mid-width-and-tall band, the 150 % text scale, and the pause menu. The odds
+  that a fifth exists are not low.
+- **A green detector proves nothing without its self-test.** Three detectors in
+  this file have been silently inert at some point, and two were wrong in the
+  direction of passing: one measured the content box instead of the scrollport,
+  one ignored the row's flex gap. Both reported ALL PASS over a real defect.
+- **The cast checks cover strings, not intent.** The greps catch a read of
+  `.name`/`.blurb` and a fixed list of phrases. A new persona word nobody thought
+  to add to that list is invisible to them.
+- **No harness plays the game without looking at the screen**, and nobody has.
+  Everything is spoken, which is a property of the code; that it is playable
+  that way is not tested.
+- **`mutate` proves the harnesses catch the faults in its list.** It does not
+  measure coverage, and its anchors reach five source files.
+- **Nobody has played this with one switch.** No harness substitutes for that,
+  and §10 says so.
 
 ## Modes (added 2026-08-16)
 

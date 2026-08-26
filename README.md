@@ -11,7 +11,7 @@ which the [NARBE House developer guide](https://narbehouse.github.io/developer-g
 names as the authority. This is a standalone build that cannot call the hub's
 shared modules, so it follows the contract without being able to import it.
 DESIGN.md lists every departure, and itemises their §10 shipping checklist item
-by item — including the one they say is the only test that counts, which is not
+by item — including the item §10 calls the only test that counts, which is not
 ticked.
 
 ## Playing
@@ -20,7 +20,9 @@ ticked.
   open). There is also a **Menu** row at the end of both shot lists — a round and
   the practice range — and a Pause button on screen, so reaching the menu never
   depends on holding a switch down. One exception: during the flight animation
-  there is no list, so there the routes are the hold and the Pause button only.
+  there is no list, so the only routes are the hold and the Pause button — and
+  the Pause button needs a pointer, it is not in the scan order. A switch-only
+  player who cannot hold cannot pause a flight. They wait it out.
 - Hold Space to scan backwards. **Auto Scan** (Settings) moves the highlight by
   itself, so a single switch on Enter is enough. Click/tap also works, and
   there is a hover-to-pick (dwell) mode for head- and eye-tracking users.
@@ -32,28 +34,19 @@ ticked.
   one-switch path is covered by harness and by hand; DESIGN.md lists that gap
   alongside the others.
 - Everything is spoken and captioned. A tone rises with the ball's height. The
-  cup beeper speeds up as a rolling ball gets close. It is playable without
-  looking at the screen.
-- Text scales to 200%. The scan list is what gets the room: the caption and
-  footer give up theirs first. Separately, on a **short or narrow viewport** —
-  which is about the window, not the text size — the rows stop growing. The
-  footer legend goes too on a short one: below 560px of height always, and
-  between 561 and 700px only at 175% or 200% text. (Those keys are spoken and on
-  the Help page.) At large print on a mid-width window the list stops sharing the
-  screen with the course view and takes the full width instead. All of it so the
-  highlighted row stays on screen and inside its own box rather than scaling
-  itself out of view. `pnpm layout-check` measures this on every build — run it
-  for the cell count; it prints one. It sweeps every text scale across viewports
-  from 1920x1080 down to 280x480, enumerating the two corners where the tiers
-  overlap (narrow-and-short, and mid-width-and-tall), plus focused passes for the
-  thick highlight ring and the character names. It checks four things per row:
-  nothing clipped vertically, nothing overflowing sideways, the highlight ring
-  drawn whole, and the Pause button on screen. The rows do get small on the
-  smallest screens — DESIGN.md gives the measured sizes and says where they fall
-  short of the hub's 64 px guidance.
+  cup beeper speeds up as a rolling ball gets close. Every screen is spoken, so
+  the screen should not be needed to play — but nobody has played it through
+  that way, and no harness does either.
+- Text scales to 200%. On a small window the caption bar, the footer legend and
+  the row sizes give up room in that order, so the highlighted row stays on
+  screen and whole. `pnpm layout-check` drives the built game in a browser and
+  measures it on every deploy. The rows do get small on the smallest screens —
+  DESIGN.md gives the measured sizes and says where they fall short of the hub's
+  64 px guidance.
 - Two six-hole courses, two-player pass-and-play, a practice range, and a
   **Make a Hole** editor (pick length, hills, water, sand, wind — par comes
-  from simulating your hole, and you can save ten).
+  from simulating your hole, and you can save a bookful — `MAX_CUSTOM_HOLES` in
+  `src/tuning.ts` sets how many).
 
 **Play it at [oddball.pages.dev](https://oddball.pages.dev)** — or run it
 locally with the commands below. Speech uses the browser's built-in voices
@@ -103,6 +96,8 @@ pnpm layout-check   # drives the built bundle in a browser across every text
                     # scale and viewport tier; needs `pnpm build` first
 pnpm mutate         # breaks the shipped code one edit at a time; each must go red
                     # (this one WRITES to src/ and restores it — needs a clean tree)
+pnpm format         # biome, writes
+pnpm preview        # serve the built dist
 pnpm build
 pnpm deploy          # Cloudflare Pages; publishes dist/ to oddball.pages.dev
 ```

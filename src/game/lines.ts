@@ -36,7 +36,12 @@ export const MENU = {
 	deleteArmed: 'Yes — delete',
 	deleteArmedSpeak: 'Delete this hole for good? Pick this again to be sure.',
 	help: 'How to Play',
-	helpSpeak: 'How to Play. Learn the game and meet the team.',
+	// NOT 'meet the team'. The page this row opens is titled by the cast setting
+	// (helpPages), and this row was left as a const saying "meet the team" in
+	// both modes — the third ungated cast string found in this file, after
+	// rangeNarrate and HELP_PAGES. It is spoken at every pass of the main menu,
+	// which is the first list a new player scans.
+	helpSpeak: 'How to Play. Learn the game and the shapes.',
 	settings: 'Settings',
 	settingsSpeak: 'Settings. Change the voice, the colors, and more.',
 	back: 'Back',
@@ -73,7 +78,7 @@ export const helpPages = (characters: boolean): Array<{ label: string; speak: st
 	{
 		label: 'What is this game?',
 		speak:
-			'You are a golf ball. A golfer hits you toward the cup. Before every hit, you pick what shape to be. Each shape moves its own way. Pick the right friend for the right moment.',
+			'You are a golf ball. A golfer hits you toward the cup. Before every hit, you pick what shape to be. Each shape moves its own way. Pick the right shape for the right moment.',
 	},
 	{
 		label: 'The controls',
