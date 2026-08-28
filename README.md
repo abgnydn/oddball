@@ -10,8 +10,8 @@ Built **against** the input contract in the NARBE hub's
 which the [NARBE House developer guide](https://narbehouse.github.io/developer-guide.html)
 names as the authority. This is a standalone build that cannot call the hub's
 shared modules, so it follows the contract without being able to import it.
-DESIGN.md lists every departure, and itemises their §10 shipping checklist item
-by item — including the item §10 calls the only test that counts, which is not
+DESIGN.md lists the departures found so far, and itemises their §10 shipping
+checklist item by item — including the item §10 calls the only test that counts, which is not
 ticked.
 
 **Odd Ball is not a NARBE House project.** It is not in their library, it has
@@ -24,7 +24,9 @@ rights; the names above cite their contract and claim no connection to it.
 
 **Setting it up for one switch.** Map the switch to Enter. In Settings, turn
 **Auto scan** on and set **Scan speed** to the slowest rung your player is
-comfortable with. Nothing else needs changing, and settings save in the browser.
+comfortable with. If your player cannot hold a switch down, also turn
+**Animations** off: that removes the flight animation, which is the one place
+the menu is not scannable. Settings save in the browser.
 
 - **Space** — next choice. **Enter** — pick it. **Hold Enter** — menu (it stays
   open). There is also a **Menu** row at the end of both shot lists — a round and
@@ -32,9 +34,10 @@ comfortable with. Nothing else needs changing, and settings save in the browser.
   depends on holding a switch down anywhere except the flight animation. There
   the list is hidden, so the only routes are the 3 s hold and the Pause button,
   and the Pause button needs a pointer — it is not in the scan order. A
-  switch-only player who cannot hold cannot pause a flight. The animation runs
-  three to six seconds, and turning **Animations** off in Settings removes it
-  altogether, and with it this gap.
+  switch-only player who cannot hold cannot pause a flight. Measured, the panel
+  is gone for 3.6 to 7.9 seconds — longest when the ball goes in, because a
+  hole-out has an afterglow. Turning **Animations** off in Settings removes the
+  animated flight, and with it this gap.
 - Hold Space to scan backwards. **Auto Scan** (Settings) moves the highlight by
   itself, so a single switch on Enter is enough. Click/tap also works, and
   there is a hover-to-pick (dwell) mode for head- and eye-tracking users.
@@ -95,7 +98,7 @@ only.
 ## Development
 
 Needs Node 22+ and pnpm 10+. `pnpm layout-check` and `pnpm deploy` also need a
-chromium binary — `pnpm exec playwright install chromium`, once.
+chromium binary — `pnpm exec playwright-core install chromium`, once.
 
 ```sh
 pnpm install
@@ -108,9 +111,9 @@ pnpm input-check    # switch/scan grammar self-test
 pnpm menu-check     # pause menu / confirms / Auto Scan, through the real flow
 pnpm layout-check   # drives the built bundle in a browser across every text
                     # scale and viewport tier; needs `pnpm build` first, and a
-                    # chromium binary: `pnpm exec playwright install chromium`
-                    # once. `playwright-core` is a library, not a downloader —
-                    # `pnpm install` does not fetch a browser.
+                    # chromium binary: `pnpm exec playwright-core install chromium`
+                    # once. `pnpm install` does not fetch a browser; the
+                    # installer ships with playwright-core.
 pnpm mutate         # breaks the shipped code one edit at a time; each must go red
                     # (this one WRITES to src/ and restores it — needs a clean tree)
 pnpm format         # biome, writes

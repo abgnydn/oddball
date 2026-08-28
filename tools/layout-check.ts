@@ -338,16 +338,14 @@ const passesFor = (css: string): Pass[] => [
 		// its mind, so both sides of it get measured. The list is derived from
 		// the stylesheet's own breakpoints rather than typed out, so adding a
 		// media query adds its edge cells too.
-		// Two scales and the two scrolling lists, to keep this affordable: the
-		// deploy script runs this harness, and a gate nobody waits for is a gate
-		// that gets skipped.
 		label: 'breakpoint edges',
 		viewports: edgeViewports(css),
-		// EVERY scale. This pass ran [125, 200] and generated the exact cell —
-		// (320, 561) — that would have caught a Pause button 15.4px off screen at
-		// 150 %. This file already carries the lesson ("a scale the grid does not
-		// test is a scale the grid does not cover") and it was applied to the main
-		// grid and not to the pass written for boundaries.
+		// EVERY scale, and the comment that used to sit above this said "two
+		// scales" for an hour after the value changed. The pass ran [125, 200] and
+		// generated the exact cell — (320, 561) — that would have caught a Pause
+		// button 15.4px off screen at 150 %. This file already carried the lesson
+		// ("a scale the grid does not test is a scale the grid does not cover"),
+		// applied to the main grid and not to the pass written for boundaries.
 		scales: SCALES,
 		highlightThick: 'thick',
 		characters: false,
@@ -409,14 +407,17 @@ const main = async () => {
 		process.exit(1)
 	}
 
-	// `playwright-core` is a library, not a downloader: `pnpm install` fetches no
-	// browser. On the machine this was written on a global Playwright had already
-	// populated the cache, so nothing here failed and nothing said what was
-	// needed — and `pnpm deploy` gates on this harness, which made it an
-	// undocumented deploy prerequisite.
+	// `pnpm install` fetches no browser. On the machine this was written on a
+	// global Playwright had already populated the cache, so nothing here failed
+	// and nothing said what was needed — and `pnpm deploy` gates on this harness,
+	// which made it an undocumented deploy prerequisite.
+	// The installer DOES ship with playwright-core; the first version of this
+	// guard said otherwise and printed `pnpm exec playwright install`, which does
+	// not exist — the package's bin is `playwright-core`. A guard that blocks you
+	// and then hands you a command that also fails is worse than no guard.
 	if (!existsSync(chromium.executablePath())) {
 		console.log(
-			`no chromium binary at ${chromium.executablePath()} — run \`pnpm exec playwright install chromium\` once. playwright-core does not download one.`,
+			`no chromium binary at ${chromium.executablePath()} — run \`pnpm exec playwright-core install chromium\` once.`,
 		)
 		process.exit(1)
 	}

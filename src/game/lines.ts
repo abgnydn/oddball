@@ -100,6 +100,10 @@ export const helpPages = (characters: boolean): Array<{ label: string; speak: st
 
 const yds = (n: number): string => `${n} ${n === 1 ? 'yard' : 'yards'}`
 
+/** "1 shots in 1 holes" reached a player: a one-hole custom round holed out in
+ *  one says both. `yds` had this covered for yards and nothing else did. */
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
+
 const lieWord = (lie: Surface): string => {
 	if (lie === 'rough') return 'tall grass'
 	if (lie === 'sand') return 'sand'
@@ -126,7 +130,7 @@ export const whereAmI = (
 
 /** Distance FIRST, character second. §9 warns that a focus label "is read aloud
  *  at every scan step, and at a 1 s scan speed a long label becomes a drone",
- *  and these run 6-10 s. Per-item labels deliberately do not hold the scan
+ *  and these run 4-10 s. Per-item labels deliberately do not hold the scan
  *  timer, so at the default 2 s an auto-scanning player hears only the opening
  *  — and the yardage used to be at the END, which meant the one number that
  *  decides the shot was the one part they never reached. The blurb is flavour
@@ -219,7 +223,7 @@ export const summaryLine = (strokes: number[], pars: number[]): string => {
 	let verdict = `${diff} over par.`
 	if (diff < 0) verdict = `${-diff} under par.`
 	else if (diff === 0) verdict = 'Right at par.'
-	return `The round is done. You took ${total} shots in ${strokes.length} holes. Par is ${parTotal}. ${verdict}`
+	return `The round is done. You took ${plural(total, 'shot')} in ${plural(strokes.length, 'hole')}. Par is ${parTotal}. ${verdict}`
 }
 
 export const summaryHole = (hole: HoleSpec, index: number, strokes: number): string =>

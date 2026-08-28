@@ -716,7 +716,7 @@ const pointerBounceChecks = async () => {
 // ---------- 4d. the shot-deciding number is heard before the scan moves on ----------
 
 // §9: a focus label "is read aloud at every scan step, and at a 1 s scan speed
-// a long label becomes a drone". These labels run 6-10 s and do NOT hold the
+// a long label becomes a drone". These labels run 4-10 s and do NOT hold the
 // scan timer, so whatever comes after the first couple of seconds is not heard
 // by an auto-scanning player. The yardage decides the shot, so it has to be in
 // that window; the character blurb does not and can be cut off.
@@ -772,6 +772,27 @@ const courseFocusChecks = () => {
 		L.BOOK_FULL.includes('ten') && MAX_CUSTOM_HOLES === 10,
 		`${L.BOOK_FULL} (cap=${MAX_CUSTOM_HOLES})`,
 	)
+}
+
+// Nothing was checking the spoken text for "1 shots in 1 holes", which a player
+// hears after holing out in one on a saved single hole. Every count the game
+// speaks gets checked at n=1, because 1 is the value every plural gets wrong and
+// the one a harness driving a full round never produces.
+const pluralChecks = () => {
+	const one = L.summaryLine([1], [2])
+	check('the round summary is grammatical at one shot', !/\b1 shots\b/.test(one), one)
+	check('the round summary is grammatical at one hole', !/\b1 holes\b/.test(one), one)
+	const many = L.summaryLine([3, 4], [2, 2])
+	check('and still plural above one', /\b7 shots\b/.test(many) && /\b2 holes\b/.test(many), many)
+	// The rest of the spoken surface, at 1, swept for the same shape.
+	const atOne = [
+		L.scoreLine(1, 3),
+		L.summaryLine([1], [3]),
+		L.holeIntro(COURSES[0]?.holes[0] as HoleSpec, 0),
+	]
+	for (const line of atOne) {
+		check('no "1 <word>s" anywhere in a line spoken at one', !/\b1 \w+s\b/.test(line), line)
+	}
 }
 
 // ---------- 5a1. the published markdown actually renders ----------
@@ -1206,6 +1227,7 @@ const main = async () => {
 	await watchdogChecks()
 	settingsSpeechChecks()
 	courseFocusChecks()
+	pluralChecks()
 	markdownChecks()
 	checklistTallyChecks()
 	castDocQuoteChecks()

@@ -37,8 +37,10 @@ framing, and it is contested; it is written here as the assumption under review,
 not as a settled principle. Two of the six shapes are left unmapped.
 
 The four purposeful shapes are not ranked against each other; each has a hole
-where it is the right choice. The two gamble shapes are never the sober best
-line. They win by luck, by design. `pnpm holes` asserts both.
+where it is the right choice. The two gamble shapes are designed to win by luck. `pnpm holes` asserts that
+each purposeful shape is part of a best line somewhere, and that each gamble
+shape's lucky tail beats intended play on at least one hole. It does not assert
+that a gamble shape is never the best line; DESIGN.md states that as intent.
 
 ## The six
 

@@ -27,7 +27,7 @@ behavior it means those two files, not the library.
 
 This build is standalone: it cannot call `NarbeScanManager`, so it stores and
 enforces the same settings itself. "Where this departs from the hub contract"
-below lists every place that shows.
+below lists the places found so far.
 
 - **Spacebar release** (held < 3 s): step scan highlight FORWARD one item.
   Activates on **keyup** so accidental holds don't trigger.
@@ -105,9 +105,9 @@ modules — so some contract items are met differently:
 | §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan. Most game-specific rows sit after both rather than before; one — Character names — sits with the speech rows instead, because it changes what speech says and nothing else |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled here (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
 | §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three ways.** Two numbers exist for every control and they are not the same: the `min-height` floor in the stylesheet, and the height the browser actually renders once padding, borders and line-height are added. The floors below are read from `theme.css`; the rendered heights are measured in a real browser. (1) The on-screen Pause button's floor is `min-height: 2.2rem`, so it tracks the text setting — rendered 38 px at 100 %, 44.6 px at the shipped 125 % default, then 52.8 / 61.6 / 70.4 px at 150 / 175 / 200 %. It first clears 64 px at 200 %. (2) On a viewport 560 px or shorter that floor becomes a flat 44 px, and there the button renders at exactly 44 px at **every** text scale — on a landscape phone it never reaches 64 px at all. (3) A scan row's 64 px floor survives only above 700 px of height **and** above 560 px of width. A short screen or a narrow one drops it to 56 px; 480 px of height or 360 px of width drops it to 44 px. On a 320x400 or 280x560 screen a plain row then renders at 44.4 px at every text scale — but not every row is plain: a shape row is 50 px, because the glyph and not the type sets its height, and a settings row whose value wraps to two lines is 66.8 px. Where no cap bites, rows are comfortably over: 65 px at 100 % and 124 px at 200 % on 1024x900. Each cap exists because the full-size control pushed itself or the footer off a short screen, and a target you cannot reach at all is worse than an undersized one — but they are departures, not compliance. `pnpm layout-check` measures all of it on every build |
-| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight. The animation runs 3-6 s (`MIN_PLAY_S`/`MAX_PLAY_S`), and turning Animations off removes the animated flight entirely, which removes this gap — but that is a setting the player has to find |
+| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight. Measured from the shape click to the panel returning: 3.6-7.9 s. `MIN_PLAY_S`/`MAX_PLAY_S` are 3 and 6, but `PRE_S` (0.45) runs before and `AFTER_TOTAL_S` (1.5) after a hole-out, and `scanner.clear()` covers the whole scene — reading the two constants understates the gap by a third. Turning Animations off removes the animated flight and with it this gap, but that is a setting the player has to find |
 | §5: `tutorial-modal.js` provides the shared how-to-play modal | not used, and not reimplemented as a modal. How to play is a scannable **Help** screen in the same list grammar as everything else. A standalone build cannot call `window.BennyTutorial`, and there is no video to embed |
-| §9: a focus label must be short — "it is read aloud at every scan step, and at a 1 s scan speed a long label becomes a drone" | the shape labels run about 4-10 s spoken at 160 wpm (`menu-check` prints the word counts; the range depends on the cast setting), and per-item focus labels deliberately do NOT hold the scan timer, so at any rung below their length the tail is not heard. Mitigated, not fixed: the yardage that decides the shot now comes FIRST (~1.9 s, inside the 2 s default), and the character blurb — which can be cut off without cost — comes after. `menu-check` asserts that order and that budget. At the 1 s rung nothing useful fits, and that is not solvable by wording |
+| §9: a focus label must be short — "it is read aloud at every scan step, and at a 1 s scan speed a long label becomes a drone" | the shape labels run about 4-10 s spoken at 160 wpm (4.1 s for Egg with the cast off, 10.5 s for Dot with it on, counted from `tuning.ts` at 160 wpm), and per-item focus labels deliberately do NOT hold the scan timer, so at any rung below their length the tail is not heard. Mitigated, not fixed: the yardage that decides the shot now comes FIRST (~1.9 s, inside the 2 s default), and the character blurb — which can be cut off without cost — comes after. `menu-check` asserts that order and that budget. At the 1 s rung nothing useful fits, and that is not solvable by wording |
 
 ### §10, the shipping checklist, item by item
 
@@ -115,8 +115,9 @@ This is the list the README's summary points at. The README used to say only
 that roughly half the checklist was unmet, with nothing behind it. §10 has 18 items. Counting the table below:
 **7 met, 3 met by a different route, 8 not met** — where "different route" means
 the behaviour is equivalent but the shared module it is supposed to come from
-does not exist in a standalone build, and nothing else. One of the 7 is met by
-harness only, never by a switch user; the last row says which. Count the rows;
+does not exist in a standalone build, and nothing else. Three of the 7 rest on harness
+evidence alone. Row 2 says so explicitly, and by the last row none of the 18 has
+been confirmed by a switch user. Count the rows;
 this sentence is a summary of them and summaries drift.
 
 | §10 item | This build |
@@ -321,7 +322,9 @@ measured value.
 - `pnpm holes` — plays the course over many seeds with (a) the per-hole intended
   strategy and (b) every single-shape strategy. Asserts: every hole completable
   ≤ 8 strokes ≥ 95 % of seeds by intended play; intended beats every single-shape
-  strategy on course total; each shape appears in some hole's best line; measured
+  strategy on course total; each of the four purposeful shapes appears in some
+  hole's best line, and each gamble shape's lucky tail beats intended play on at
+  least one hole; measured
   pars match tuning pars.
 - Layout is a correctness question here, not a cosmetic one: a highlight drawn
   outside its panel leaves a switch user unable to see what they are about to
@@ -356,7 +359,12 @@ measured value.
   unreported. Before the sweep it runs a self-test that forces a 4000 px
   row, a 4000 px-wide row, a 400 px ring on an unclipped row, and a Pause button
   translated 9000 px down, and exits non-zero if any of those four probes fails
-  to fire: a detector that never fires cannot tell a clean build from a broken
+  to fire. Two more gates run beside them, printed in the same line: the two
+  routes to the pause menu must open the same menu, and the focus pulse's
+  keyframe must take its spread from `--hl-reach`. The pulse cannot be measured
+  per cell — it is an animation, and sampling it just after focus returns about
+  zero, which is how a build with a 400 px overshoot passed all 1615 cells. It
+  is checked in the stylesheet instead: a detector that never fires cannot tell a clean build from a broken
   one. The grid is not a general sample — it enumerates BOTH corners where the
   tiers overlap: narrow-and-short, and mid-width-and-tall. The second was added
   after the first grid missed it entirely; every wide cell in it was ≥ 900 px
@@ -449,16 +457,20 @@ under the claim establishes. Every item below was one of those claims:
   the narrow-and-short corner; the mid-width-and-tall band; the 150 % text
   scale; the pause menu, which is a second scrolling list; every in-round
   screen, which is where the header defect lived; the `max-width: 400px` tier,
-  which the breakpoint parser silently dropped; and `reduceMotion: false`, the
+  which the breakpoint parser silently dropped; `reduceMotion: false`, the
   shipped default, which every pass hard-coded to true — that one survived a
   round after the parameter for fixing it was added, because a comment claimed
-  the fix in the past tense and nobody read the four literals under it. An
-  eighth has not been ruled out.
+  the fix in the past tense and nobody read the four literals under it; and the
+  280-310 px wide by 561-589 px tall band at 150 % text, where the grid had
+  nothing between 280x560 and 280x653 and the boundary pass ran two scales out
+  of five. A ninth has not been ruled out.
 - **`layout-check` measures five screens; the game has more.** The course
   picker, the two-player picker, the hole editor, My Holes, the saved-hole menu
   with its armed delete, the four Help pages and the two end-of-round summaries
-  are visited by no cell. That is not an unruled-out region — it is a known one,
-  and the last two live defects were both on screens the harness did not visit.
+  are visited by no cell. That is not an unruled-out region — it is a known one.
+  Two of the three live defects found so far were on screens the harness does
+  not visit; the third was on screens it does, at a scale its boundary pass did
+  not run.
 - **A detector can be wrong in the direction of passing.** Three in this file
   have been silently inert at some point, and two measured the wrong box: one
   used the content box instead of the scrollport, one ignored the row's flex
