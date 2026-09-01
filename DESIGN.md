@@ -79,8 +79,9 @@ below lists the places found so far.
 - **Pointer (optional but required to work)**: click an item = select it.
   Click-and-hold (≥ 3 s, the same threshold as Enter) anywhere = context menu.
   Never require dragging.
-- The context menu is reachable on EVERY screen, including during flight
-  (pauses the animation), and stays open until an item is picked.
+- The context menu is reachable on every screen and stays open until an item is
+  picked. During flight it is reachable by hold or pointer only, because the
+  rack is cleared — see the departures table.
 
 ### Where this departs from the hub contract
 
@@ -172,8 +173,8 @@ Making it a setting instead is not done.
   of "Meet the team", and the star's "Boing!" bounce line falls back to the
   neutral wording every other shape already used. Every spoken line that names a
   shape routes through `shapeName()`/`shapeBlurb()`.
-  That is enforced, not asserted: five separate leaks were found by review
-  before it was true. `menu-check` greps every `.ts` under `src/` for a read of
+  Five separate leaks were found by review before that sentence was true. It is
+  enforced now: `menu-check` greps every `.ts` under `src/` for a read of
   a shape's `.name` or `.blurb` outside the two accessors, and greps separately
   for a cast phrase typed into a string, which a name-reader check cannot see.
   Both have non-vacuity assertions. Neither can see a leak that is not a string:
@@ -240,7 +241,8 @@ Making it a setting instead is not done.
 ## Game rules
 
 - 6-hole course, played in order. Stroke count per hole; friendly score names vs par.
-- Max 8 strokes per hole, then the hole ends and you move on (no fail state).
+- Max 8 strokes per hole, then the hole ends. One-player has no fail state;
+  two-player produces a winner.
   The line says so plainly — it used to say "the ball takes a rest", which is a
   euphemism aimed at an adult and the clearest §1 breach in the shipped default.
 - Each stroke: scan the shape rack → select a shape → short swing anticipation
@@ -355,7 +357,7 @@ measured value.
   routes to the pause menu must open the same menu, and the focus pulse's
   keyframe must take its spread from `--hl-reach`. The pulse cannot be measured
   per cell — it is an animation, and sampling it just after focus returns about
-  zero, which is how a build with a 400 px overshoot passed all 1615 cells. It
+  zero, which is how a build with a 400 px overshoot passed every cell. It
   is checked in the stylesheet instead: a detector that never fires cannot tell a clean build from a broken
   one. The grid is not a general sample — it enumerates BOTH corners where the
   tiers overlap: narrow-and-short, and mid-width-and-tall. The second was added
@@ -460,10 +462,15 @@ under the claim establishes. Every item below was one of those claims:
   picker, the two-player picker, the hole editor, My Holes, the saved-hole menu
   with its armed delete, the four Help pages, the two end-of-round summaries and
   the in-round pause menu — five rows, where the `overlay` cells open the
-  two-row title one — are visited by no cell. That is not an unruled-out region — it is a known one.
+  two-row title one — are visited by no cell. That is a known region rather than an unruled-out one.
   Two of the three live defects found so far were on screens the harness does
   not visit; the third was on screens it does, at a scale its boundary pass did
   not run.
+- **An assertion can stop running instead of failing.** One did: a CAST.md quote
+  check only fired when the quote shared a prefix with the shipped line, so
+  changing either side dropped it and the suite went 191/191 to 190/190 with the
+  regression shipped. `menu-check` pins its own check count for that reason — an
+  assertion that stops running now fails the suite.
 - **A detector can be wrong in the direction of passing.** Three in this file
   have been silently inert at some point, and two measured the wrong box: one
   used the content box instead of the scrollport, one ignored the row's flex

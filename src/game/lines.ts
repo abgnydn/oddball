@@ -83,7 +83,7 @@ export const helpPages = (characters: boolean): Array<{ label: string; speak: st
 	{
 		label: 'The controls',
 		speak:
-			'Press Space to move to the next choice. Press Enter to pick it. Hold Space to go backwards. Hold Enter to open the menu. While you are playing, there is a Menu choice at the end of the shape list too. In Settings you can turn on Auto scan, so the light moves by itself.',
+			'Press Space to move to the next choice. Press Enter to pick it. Hold Space to go backwards. Hold Enter to open the menu. While you are playing, there is a Menu choice at the end of the shape list too. There is also a Pause button on the screen, which needs a mouse or a finger. In Settings you can turn on Auto scan, so the light moves by itself.',
 	},
 	{
 		label: characters ? 'Meet the team' : 'The shapes',
@@ -94,7 +94,7 @@ export const helpPages = (characters: boolean): Array<{ label: string; speak: st
 	{
 		label: 'Scoring',
 		speak:
-			'Each hit is one shot. Fewer shots is better. Par is a good score for the hole. Get the ball close to the cup and it counts as in. If you take eight shots on a hole, the hole ends and you go on to the next one.',
+			'Each hit is one shot. Fewer shots is better. Par is a good score for the hole. Get the ball close to the cup and it counts as in. If you take eight shots on a hole, that is the limit and the hole is over.',
 	},
 ]
 
@@ -212,7 +212,11 @@ export const scoreLine = (strokes: number, par: number): string => {
 // not be talked to like one", and a euphemism for the stroke cap is the clearest
 // place this build was doing that. It ships in both cast modes, which is why the
 // §1 departures row scoping the question to the cast layer was too narrow.
-export const REST_LINE = `That is ${MAX_STROKES} shots. That is the limit for this hole. On to the next hole.`
+// No "On to the next hole." — it is false in three shipped cases: in two-player
+// the next turn is the SAME hole, on the last hole a summary follows, and a
+// custom round has one hole. `playerTurn`, `nextHole` and `summary` each say
+// what actually comes next, so this line stops at the fact it owns.
+export const REST_LINE = `That is ${MAX_STROKES} shots. That is the limit for this hole.`
 
 export const summaryLine = (strokes: number[], pars: number[]): string => {
 	const total = strokes.reduce((s, v) => s + v, 0)

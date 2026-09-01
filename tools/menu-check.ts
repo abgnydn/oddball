@@ -807,6 +807,34 @@ const pluralChecks = () => {
 	}
 }
 
+// A spoken line may only promise what the flow always does next. REST_LINE said
+// "On to the next hole." and shipped in three cases where that is false: in
+// two-player the next turn is the same hole, the last hole goes to a summary,
+// and a custom round has one hole. String checks could not see it because the
+// string was correct in isolation; what was wrong was the promise.
+const forwardPromiseChecks = () => {
+	const FORWARD = /next hole|go on to the next|on to the next/i
+	// Lines spoken at a point where what comes next depends on state.
+	const stateDependent: Array<[string, string]> = [
+		['REST_LINE', L.REST_LINE],
+		['the Scoring help page', L.helpPages(false)[3]?.speak ?? ''],
+		['scoreLine', L.scoreLine(4, 3)],
+		['summaryLine', L.summaryLine([3, 4], [3, 3])],
+		['summaryLine2', L.summaryLine2(3, 4)],
+	]
+	for (const [name, line] of stateDependent) {
+		check(`${name} does not promise a next hole`, line !== '' && !FORWARD.test(line), line)
+	}
+	// ...and the lines that DO announce the next state must still exist, or this
+	// check is arguing for silence rather than accuracy.
+	check(
+		'the flow still announces whose turn and which hole',
+		L.playerTurn(2).includes('Player 2') &&
+			L.holeIntro(COURSES[0]?.holes[1] as HoleSpec, 1).includes('Hole 2'),
+		`${L.playerTurn(2)} / ${L.holeIntro(COURSES[0]?.holes[1] as HoleSpec, 1)}`,
+	)
+}
+
 // ---------- 5a1. the published markdown actually renders ----------
 
 // A GFM table ends at the first blank line. Inserting a paragraph between two
@@ -1265,6 +1293,7 @@ const main = async () => {
 	settingsSpeechChecks()
 	courseFocusChecks()
 	pluralChecks()
+	forwardPromiseChecks()
 	markdownChecks()
 	checklistTallyChecks()
 	castDocQuoteChecks()
@@ -1287,7 +1316,7 @@ const main = async () => {
 	// disappear rather than fail.
 	// Pinning the count is the general fix: any assertion that stops running
 	// takes the suite down with it. Raise this deliberately when adding checks.
-	const EXPECTED_CHECKS = 200
+	const EXPECTED_CHECKS = 206
 	if (results.length !== EXPECTED_CHECKS) {
 		console.log(
 			`menu-check: expected ${EXPECTED_CHECKS} checks, ran ${results.length}. A check that stops running is a check that stopped guarding something; find out which before changing this number.`,

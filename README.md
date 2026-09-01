@@ -36,7 +36,7 @@ the menu is not scannable. Settings save in the browser.
   the list is hidden, so the only routes are the 3 s hold and the Pause button,
   and the Pause button needs a pointer — it is not in the scan order. A
   switch-only player who cannot hold cannot pause a flight. The panel is gone
-  for a measured 3.45 to 7.95 seconds. It is longest when the ball goes in,
+  for 3.45 to 7.95 seconds, which is what the animation constants give. It is longest when the ball goes in,
   because a hole-out has an afterglow. Turning **Animations** off in Settings
   removes the animated flight, and with it this gap.
 - Hold Space to scan backwards. **Auto Scan** (Settings) moves the highlight by
