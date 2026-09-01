@@ -83,7 +83,7 @@ export const helpPages = (characters: boolean): Array<{ label: string; speak: st
 	{
 		label: 'The controls',
 		speak:
-			'Press Space to move to the next choice. Press Enter to pick it. Hold Space to go backwards. Hold Enter to open the menu. There is a Menu choice at the end of the list too, and a Pause button on the screen. In Settings you can turn on Auto scan, so the light moves by itself.',
+			'Press Space to move to the next choice. Press Enter to pick it. Hold Space to go backwards. Hold Enter to open the menu. While you are playing, there is a Menu choice at the end of the shape list too. In Settings you can turn on Auto scan, so the light moves by itself.',
 	},
 	{
 		label: characters ? 'Meet the team' : 'The shapes',
@@ -94,7 +94,7 @@ export const helpPages = (characters: boolean): Array<{ label: string; speak: st
 	{
 		label: 'Scoring',
 		speak:
-			'Each hit is one shot. Fewer shots is better. Par is a good score for the hole. Get the ball close to the cup and it counts as in. There is no way to lose.',
+			'Each hit is one shot. Fewer shots is better. Par is a good score for the hole. Get the ball close to the cup and it counts as in. If you take eight shots on a hole, the hole ends and you go on to the next one.',
 	},
 ]
 
@@ -250,10 +250,10 @@ export const summaryHole2 = (hole: HoleSpec, index: number, s1: number, s2: numb
 export const summaryLine2 = (t1: number, t2: number): string => {
 	const lead =
 		t1 === t2
-			? `You tied at ${t1} shots each.`
+			? `You tied at ${plural(t1, 'shot')} each.`
 			: t1 < t2
-				? `Player 1 took ${t1} shots. Player 2 took ${t2}. Player 1 wins this one!`
-				: `Player 2 took ${t2} shots. Player 1 took ${t1}. Player 2 wins this one!`
+				? `Player 1 took ${plural(t1, 'shot')}. Player 2 took ${t2}. Player 1 wins this one!`
+				: `Player 2 took ${plural(t2, 'shot')}. Player 1 took ${t1}. Player 2 wins this one!`
 	return `The round is done. ${lead}`
 }
 

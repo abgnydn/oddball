@@ -785,13 +785,25 @@ const pluralChecks = () => {
 	const many = L.summaryLine([3, 4], [2, 2])
 	check('and still plural above one', /\b7 shots\b/.test(many) && /\b2 holes\b/.test(many), many)
 	// The rest of the spoken surface, at 1, swept for the same shape.
+	// summaryLine2 was missed the first time, eleven lines below the function
+	// this check was written for, under a comment claiming every count was
+	// covered. Two-player on a one-hole custom round reaches it.
 	const atOne = [
 		L.scoreLine(1, 3),
 		L.summaryLine([1], [3]),
+		L.summaryLine2(1, 1),
+		L.summaryLine2(1, 3),
+		L.summaryLine2(3, 1),
 		L.holeIntro(COURSES[0]?.holes[0] as HoleSpec, 0),
 	]
 	for (const line of atOne) {
-		check('no "1 <word>s" anywhere in a line spoken at one', !/\b1 \w+s\b/.test(line), line)
+		// "Player 1 wins this one!" is a player number followed by a verb, not a
+		// count followed by a plural. Exclude it rather than loosen the rule.
+		check(
+			'no "1 <word>s" anywhere in a line spoken at one',
+			!/(?<!Player )\b1 \w+s\b/.test(line),
+			line,
+		)
 	}
 }
 
@@ -805,6 +817,18 @@ const pluralChecks = () => {
 const markdownChecks = () => {
 	const docs = readdirSync(REPO_ROOT).filter((f) => f.endsWith('.md'))
 	check('there are markdown documents to check', docs.length >= 3, docs.join(', '))
+	// ...and at least one of them must actually contain a table, or every
+	// per-file assertion below is vacuously true. README has none.
+	const withTables = docs.filter((d) =>
+		readFileSync(join(REPO_ROOT, d), 'utf8')
+			.split('\n')
+			.some((l) => l.trimStart().startsWith('|')),
+	)
+	check(
+		'at least two documents contain tables to check',
+		withTables.length >= 2,
+		withTables.join(', '),
+	)
 	for (const doc of docs) {
 		const lines = readFileSync(join(REPO_ROOT, doc), 'utf8').split('\n')
 		const runs: number[][] = []
@@ -936,23 +960,33 @@ const castDocQuoteChecks = () => {
 	// because it was scoped to "## Rack blurbs". Any quoted string in CAST.md
 	// that starts like a shipped cup line must BE the shipped cup line.
 	const allQuotes = [...doc.matchAll(/"([^"\n]{12,})"/g)].map((m) => m[1] as string)
-	// A shared PREFIX, not a shared opening word. Two words matched blurb text
-	// too ("Brick is deaf" against "Brick is very pleased."), and a check that
-	// cries wolf gets deleted. A quote that shares 15+ characters and half the
-	// line with a shipped cup line is quoting that line, and must match it.
-	const sharedPrefix = (a: string, b: string): number => {
-		let i = 0
-		while (i < a.length && i < b.length && a[i] === b[i]) i++
-		return i
-	}
+	// One assertion per shape, ALWAYS. The previous version only fired when a
+	// quote shared 15+ characters and half the shipped line — so growing the
+	// shipped line dropped the assertion instead of failing it, and a reviewer
+	// put a narrator gloss back into Penny's cup line with the suite green at
+	// 190/190. A check that can decline to run is not a check.
+	//
+	// The rule is narrow on purpose: CAST.md must contain no quote that EXTENDS
+	// a shipped cup line. That is exactly the drift that happened twice — "Penny
+	// taps once." became "Penny taps once. That means yes." — and it does not
+	// fire on "Brick is deaf", which is a fragment of a blurb rather than an
+	// extension of a cup line.
 	for (const id of SHAPE_ORDER) {
-		const shipped = HOLED_FLAVOR_TEXT[id]
-		if (shipped === undefined) continue
-		for (const q of allQuotes) {
-			const n = sharedPrefix(q, shipped)
-			if (n < 15 || n < shipped.length / 2) continue
-			check(`CAST.md's quote of ${id}'s cup line matches the code`, q === shipped, `${q}`)
-		}
+		const shipped = HOLED_FLAVOR_TEXT[id] ?? ''
+		// BOTH directions. The doc growing past the code is one drift; the code
+		// growing past the doc is the other, and it is the one that actually
+		// happened — a reviewer lengthened HOLED_FLAVOR and CAST.md's shorter
+		// quote stopped matching while the first version of this rule, which
+		// only looked for a longer quote, stayed green.
+		const drifted = allQuotes.filter(
+			(q) =>
+				q !== shipped && (q.startsWith(shipped.slice(0, -1)) || shipped.startsWith(q.slice(0, -1))),
+		)
+		check(
+			`CAST.md's quote of ${id}'s cup line matches the code`,
+			shipped !== '' && drifted.length === 0,
+			`${drifted.join(' | ')} (shipped: ${shipped})`,
+		)
 	}
 	for (const id of SHAPE_ORDER) {
 		check(
@@ -1159,9 +1193,12 @@ const castLayerChecks = () => {
 			off,
 		)
 		check(`${id}: plain focus carries no character pronoun`, !PRONOUN.test(off), off)
+		// The NAME must be in the opening clause, not merely somewhere in the
+		// line: `on.includes(name)` was satisfied by the blurb, so this passed for
+		// five of six shapes with shapeName() hard-wired to the plain name.
 		check(
 			`${id}: character focus uses the character name and blurb`,
-			on.includes(SHAPES[id].name) && on.includes(SHAPES[id].blurb),
+			on.startsWith(`${SHAPES[id].name}.`) && on.includes(SHAPES[id].blurb),
 			on,
 		)
 		check(`${id}: the two modes differ`, off !== on, `${off} // ${on}`)
@@ -1240,6 +1277,23 @@ const main = async () => {
 		console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok || !detail ? '' : ` — ${detail}`}`)
 	}
 	console.log(`${results.length - failures}/${results.length} checks passed`)
+
+	// A check that VANISHES is worse than one that always passes. `CAST.md's
+	// quote of pancake's cup line matches the code` only ran when the quoted
+	// string shared a long enough prefix with the shipped line — so growing the
+	// shipped line dropped the assertion entirely, the suite went 191/191 to
+	// 190/190, and the regression it guards shipped green. A reviewer found it
+	// by putting a narrator gloss back into Penny's line and watching the check
+	// disappear rather than fail.
+	// Pinning the count is the general fix: any assertion that stops running
+	// takes the suite down with it. Raise this deliberately when adding checks.
+	const EXPECTED_CHECKS = 200
+	if (results.length !== EXPECTED_CHECKS) {
+		console.log(
+			`menu-check: expected ${EXPECTED_CHECKS} checks, ran ${results.length}. A check that stops running is a check that stopped guarding something; find out which before changing this number.`,
+		)
+		process.exit(1)
+	}
 	process.exit(failures === 0 ? 0 : 1)
 }
 

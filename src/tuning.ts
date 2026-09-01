@@ -8,7 +8,7 @@ import type { CourseSpec, HoleSpec, Settings, ShapeId, ShapeSpec } from './types
 export const G = 9.81 // m/s^2
 export const SIM_DT = 1 / 120 // s
 export const GIMME_M = 1.5 // at rest within this of the cup = holed
-export const MAX_STROKES = 8 // per hole, then the ball takes a rest
+export const MAX_STROKES = 8 // per hole, then the hole ends
 export const LIE_POWER: Record<string, number> = {
 	fairway: 1,
 	green: 1,

@@ -565,13 +565,13 @@ body {
    legend wraps to three lines; crossing 560px of height into 561 then took the
    footer from 67px to 216.2px and pushed the document 1px past the viewport at
    the shipped 125 % default.
-   320, not 400. The first version of this rule used 400px, and a rendering
-   review measured the cost: of the 48 cells where this rule is the only thing
-   hiding the legend, forcing it back on breaks 2 — both 561px tall and no wider
-   than 300px — and fits in 46. At 390x844, an iPhone 12/13 in portrait, the
-   legend fits on two lines at 100 % and 125 % with 306-371px of scan panel to
-   spare, and the 400px rule removed it anyway. The only on-screen reminder of
-   the keys should not go where nothing was starved. */
+   320, not 400. The first version used 400px. Of the 120 grid cells where this
+   rule is the sole hider (24 viewport x scale combinations), neutering it
+   breaks 4 — 280x561 and 300x561 at 125 %, on settings and rack, 1px of
+   vertical document overflow — and fits in 116. At 390x844, an iPhone 12/13 in
+   portrait, the legend fits on two lines at 100 % and 125 %, and the 400px rule
+   removed it there anyway. The only on-screen reminder of the keys should not
+   go where nothing was starved. */
 @media (max-width: 320px) {
 	.footer-legend {
 		display: none;

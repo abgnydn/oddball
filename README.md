@@ -2,7 +2,7 @@
 
 You are the golf ball. Before every shot you pick what **shape** to be, and the
 shape's physics is the whole strategy. There is no timing and no reflex input:
-the game is fully playable with two keys, and built for switch access, low
+the game is playable with two keys, and built for switch access, low
 vision, and text-to-speech.
 
 Built **against** the input contract in the NARBE hub's
@@ -16,9 +16,10 @@ ticked.
 
 **Odd Ball is not a NARBE House project.** It is not in their library, it has
 not been submitted, and nobody there has reviewed or endorsed it. It is one
-person's build against their published contract. Their §13 reserves "NARBE" and
-"Benny's Accessibility Hub" as project identifiers and grants no trademark
-rights; the names above cite their contract and claim no connection to it.
+person's build against their published contract. Their §13 reserves "Benny's
+Accessibility Hub", "NARBE" and "NARBE Foundation" as project identifiers,
+grants no trademark rights, and says forks must not imply endorsement or
+affiliation. The names above cite their contract and claim no connection to it.
 
 ## Playing
 
@@ -34,10 +35,10 @@ the menu is not scannable. Settings save in the browser.
   depends on holding a switch down anywhere except the flight animation. There
   the list is hidden, so the only routes are the 3 s hold and the Pause button,
   and the Pause button needs a pointer — it is not in the scan order. A
-  switch-only player who cannot hold cannot pause a flight. Measured, the panel
-  is gone for 3.6 to 7.9 seconds — longest when the ball goes in, because a
-  hole-out has an afterglow. Turning **Animations** off in Settings removes the
-  animated flight, and with it this gap.
+  switch-only player who cannot hold cannot pause a flight. The panel is gone
+  for a measured 3.45 to 7.95 seconds. It is longest when the ball goes in,
+  because a hole-out has an afterglow. Turning **Animations** off in Settings
+  removes the animated flight, and with it this gap.
 - Hold Space to scan backwards. **Auto Scan** (Settings) moves the highlight by
   itself, so a single switch on Enter is enough. Click/tap also works, and
   there is a hover-to-pick (dwell) mode for head- and eye-tracking users.

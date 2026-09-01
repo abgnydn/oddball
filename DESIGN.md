@@ -8,8 +8,8 @@ Target platform: web, standalone (Vite static build). Audience: switch users
 (1–2 inputs) and low vision. Text is short sentences and common words. Speech
 is the interface and a caption is read at a glance. Built **against** the NARBE
 House developer guide (narbehouse.github.io/developer-guide.html) and the input
-contract it names — against, not to: the departures table below lists every
-place this build does not comply.
+contract it names. The departures table below lists the places found so far
+where this build does not follow it.
 
 ## Input grammar
 
@@ -90,7 +90,7 @@ modules — so some contract items are met differently:
 | `ACCESSIBILITY.md` says | This build |
 | --- | --- |
 | §1: the player "is not a child, and should not be talked to like one" — "the access is what is adapted, not the dignity" | the cast layer (CAST.md) writes the shapes as characters with feelings: "Brick is very pleased", "Boing bounces with joy". Whether that reads as warmth or as talking down is a call this build is not entitled to make for a player it has never met, so it is now a **setting, off by default**. The shipped reading names the shape for what it is and describes what it does: "Cube. Goes about 93 yards. It lands and it stays. Wind moves it less than any other shape." Turning the cast on is the player's choice. The setting does not settle the question — it just stops the game answering it for them |
-| §1: give the player "a way to choose how hard the game pushes back", and a no-fail mode is "*the* version" for some players | no difficulty setting. Golf has no fail state (eight strokes and the ball rests), and the practice range is unscored and endless — but neither is a difficulty the player chose. Not done |
+| §1: give the player "a way to choose how hard the game pushes back", and a no-fail mode is "*the* version" for some players | no difficulty setting. Golf has no fail state in one-player (eight strokes and the hole ends); two-player does produce a winner. The practice range is unscored and endless. None of that is a difficulty the player chose. Not done |
 | §4: `scan-manager.js` enforces a 250 ms global cooldown — "You do not need to write your own debounce, and you should not" | its own 250 ms cooldown: per key for switch presses, and a separate one on pointer selects (click and dwell). There is no `NarbeScanManager` to defer to |
 | §4: the convention is ~3 s to scan backwards and ~5 s to pause, "and new games should match it" | 3 s for both. The backward hold matches; the menu hold does not |
 | §5: use `SafeAudio`, never the Web Audio API (an `AudioContext` can take down the Electron renderer) | WebAudio, for the flight tone and the cup beeper. This build is web-only, so the Electron failure mode does not apply here — but it would if it were ever bundled |
@@ -105,7 +105,7 @@ modules — so some contract items are met differently:
 | §7: the Settings rows in the canonical order — Text to Speech, Voice, game-specific, Auto Scan, Scan Speed, Sound Effects, Reset Progress, Back | Scan speed sits before Auto scan. Most game-specific rows sit after both rather than before; one — Character names — sits with the speech rows instead, because it changes what speech says and nothing else |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled here (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
 | §9: "large targets (**≥ 64 px** on tablet)" | **not met, in three ways.** Two numbers exist for every control and they are not the same: the `min-height` floor in the stylesheet, and the height the browser actually renders once padding, borders and line-height are added. The floors below are read from `theme.css`; the rendered heights are measured in a real browser. (1) The on-screen Pause button's floor is `min-height: 2.2rem`, so it tracks the text setting — rendered 38 px at 100 %, 44.6 px at the shipped 125 % default, then 52.8 / 61.6 / 70.4 px at 150 / 175 / 200 %. It first clears 64 px at 200 %. (2) On a viewport 560 px or shorter that floor becomes a flat 44 px, and there the button renders at exactly 44 px at **every** text scale — on a landscape phone it never reaches 64 px at all. (3) A scan row's 64 px floor survives only above 700 px of height **and** above 560 px of width. A short screen or a narrow one drops it to 56 px; 480 px of height or 360 px of width drops it to 44 px. On a 320x400 or 280x560 screen a plain row then renders at 44.4 px at every text scale — but not every row is plain: a shape row is 50 px, because the glyph and not the type sets its height, and a settings row whose value wraps to two lines is 66.8 px. Where no cap bites, rows are comfortably over: 65 px at 100 % and 124 px at 200 % on 1024x900. Each cap exists because the full-size control pushed itself or the footer off a short screen, and a target you cannot reach at all is worse than an undersized one — but they are departures, not compliance. `pnpm layout-check` measures all of it on every build |
-| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight. Measured from the shape click to the panel returning: 3.6-7.9 s. `MIN_PLAY_S`/`MAX_PLAY_S` are 3 and 6, but `PRE_S` (0.45) runs before and `AFTER_TOTAL_S` (1.5) after a hole-out, and `scanner.clear()` covers the whole scene — reading the two constants understates the gap by a third. Turning Animations off removes the animated flight and with it this gap, but that is a setting the player has to find |
+| §12: pause should be "something you can *scan to and select*", because for a player who cannot sustain a hold the gesture "is not an accessible route to pause, it is a locked door" | met on both gameplay lists — the round shot rack and the practice range — via the scannable **Menu** row. The range had no such row until a lens went looking screen by screen; the claim had been written from the rack alone. NOT met during the flight animation: `scanner.clear()` runs and the panel is hidden, so the only routes there are the 3 s hold and the on-screen Pause button. A switch-only player who cannot hold cannot pause a flight. Measured from the shape click to the panel returning: 3.45-7.95 s, which is what the constants give — 0.45 s of pre-roll, a 3-6 s flight, plus 1.5 s of afterglow when the ball goes in. `MIN_PLAY_S`/`MAX_PLAY_S` are 3 and 6, but `PRE_S` (0.45) runs before and `AFTER_TOTAL_S` (1.5) after a hole-out, and `scanner.clear()` covers the whole scene — reading the two constants understates the gap by a third. Turning Animations off removes the animated flight and with it this gap, but that is a setting the player has to find |
 | §5: `tutorial-modal.js` provides the shared how-to-play modal | not used, and not reimplemented as a modal. How to play is a scannable **Help** screen in the same list grammar as everything else. A standalone build cannot call `window.BennyTutorial`, and there is no video to embed |
 | §9: a focus label must be short — "it is read aloud at every scan step, and at a 1 s scan speed a long label becomes a drone" | the shape labels run about 4-10 s spoken at 160 wpm (4.1 s for Egg with the cast off, 10.5 s for Dot with it on, counted from `tuning.ts` at 160 wpm), and per-item focus labels deliberately do NOT hold the scan timer, so at any rung below their length the tail is not heard. Mitigated, not fixed: the yardage that decides the shot now comes FIRST (~1.9 s, inside the 2 s default), and the character blurb — which can be cut off without cost — comes after. `menu-check` asserts that order and that budget. At the 1 s rung nothing useful fits, and that is not solvable by wording |
 
@@ -172,25 +172,17 @@ Making it a setting instead is not done.
   of "Meet the team", and the star's "Boing!" bounce line falls back to the
   neutral wording every other shape already used. Every spoken line that names a
   shape routes through `shapeName()`/`shapeBlurb()`.
-  That last sentence was false when it was first written, which is the whole
-  reason it is checked now rather than asserted. Two readers were ungated: the
-  practice range's narration, so a player who picked a row labelled "Cube" heard
-  "Brick landed and stayed right there. Brick went 96 yards!" in the mode most
-  likely to be their first screen; and
-  the Help page's "Meet the team", a module-level const evaluated at import,
-  which could not consult the setting even in principle and read out "Brick is
-  deaf" and "Glide does not walk" to a player who had the layer off. Behavioural
-  checks did not catch either, because a behavioural check can only test the
-  call sites its author remembered. There turned out to be four leaks, not two:
-  those plus the main-menu row that opened the Help page — which said "meet the
-  team" in both modes — and a help line that called the shapes "friends".
-  `menu-check` now greps every `.ts` under `src/`, walked recursively, for a
-  read of a shape's `.name` or `.blurb` outside the two accessors, and greps
-  separately for a cast phrase typed into a string, which a name-reader check
-  cannot see. Both have non-vacuity assertions: if the allowlist stops matching
-  or the walk stops finding files, the check passes for every input. Old saves get `false` for free:
-  `mergeSettings` starts from `DEFAULT_SETTINGS` and only takes keys the saved
-  object actually has.
+  That is enforced, not asserted: five separate leaks were found by review
+  before it was true. `menu-check` greps every `.ts` under `src/` for a read of
+  a shape's `.name` or `.blurb` outside the two accessors, and greps separately
+  for a cast phrase typed into a string, which a name-reader check cannot see.
+  Both have non-vacuity assertions. Neither can see a leak that is not a string:
+  Penny's tap sound and tap-bounce were the fifth, and are gated through a
+  `data-characters` attribute with their own source-level checks. The ball's
+  face is deliberately NOT gated — it is the game's art rather than a
+  character's name — and that boundary is recorded here because nothing
+  enforces it. Old saves get `false` for free: `mergeSettings` starts from
+  `DEFAULT_SETTINGS` and only takes keys the saved object actually has.
 - All text lives in `src/game/lines.ts`: short sentences, common words, numbers in
   whole yards. No hold threshold is ever quoted to the player (§4); the Scan
   speed row speaks its value in seconds, as §7's canonical table does. Scores
@@ -452,7 +444,7 @@ Written down because this document has repeatedly claimed more than the check
 under the claim establishes. Every item below was one of those claims:
 
 - **"Every row" means every row the grid visits.** `layout-check` enumerates
-  viewports and screens; it does not prove a property for all of either. Seven
+  viewports and screens; it does not prove a property for all of either. Eight
   regions have been missed so far, each found by a review rather than by a run:
   the narrow-and-short corner; the mid-width-and-tall band; the 150 % text
   scale; the pause menu, which is a second scrolling list; every in-round
@@ -466,8 +458,9 @@ under the claim establishes. Every item below was one of those claims:
   of five. A ninth has not been ruled out.
 - **`layout-check` measures five screens; the game has more.** The course
   picker, the two-player picker, the hole editor, My Holes, the saved-hole menu
-  with its armed delete, the four Help pages and the two end-of-round summaries
-  are visited by no cell. That is not an unruled-out region — it is a known one.
+  with its armed delete, the four Help pages, the two end-of-round summaries and
+  the in-round pause menu — five rows, where the `overlay` cells open the
+  two-row title one — are visited by no cell. That is not an unruled-out region — it is a known one.
   Two of the three live defects found so far were on screens the harness does
   not visit; the third was on screens it does, at a scale its boundary pass did
   not run.

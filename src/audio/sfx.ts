@@ -1,4 +1,5 @@
-// Pure WebAudio synthesis — no assets. The AudioContext is created lazily on
+// 23 CC0 samples, decoded through a lazily-created AudioContext, plus a
+// synthesised flight tone and cup beeper. The context is created on
 // the first play() (autoplay policy) and resume()d whenever it is suspended.
 // Every entry point is wrapped so this module NEVER throws, headless included.
 //
