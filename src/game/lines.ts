@@ -66,6 +66,13 @@ export const MENU = {
 	// once first. A single mis-timed pick must never cost the player their game.
 	newRoundArmed: 'Yes — start over',
 	newRoundArmedSpeak: 'Start over? Your score goes away. Pick this again to be sure.',
+	resetProgress: 'Reset everything',
+	resetProgressSpeak:
+		'Reset everything. This clears your settings, your saved holes and your best scores. Press Enter to start.',
+	resetArmed: 'Yes — reset everything',
+	resetArmedSpeak:
+		'Reset everything? Your settings, your saved holes and your best scores all go away. Pick this again to be sure.',
+	resetDone: 'Everything is reset. The game starts fresh.',
 	exitArmed: 'Yes — exit',
 	exitArmedSpeak: 'Leave this round? Pick this again to be sure.',
 }

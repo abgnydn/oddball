@@ -305,4 +305,8 @@ export interface SaveAPI {
 	load(): SaveData
 	save(d: SaveData): void
 	clearRound(): void
+	/** §10's Reset Progress: everything the game has stored — settings, the round
+	 *  in progress, saved holes, the editor draft and best scores. Two-step in the
+	 *  UI, because a mis-timed pick is the normal failure mode of scanning. */
+	clearAll(): void
 }

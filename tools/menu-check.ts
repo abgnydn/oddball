@@ -127,6 +127,13 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 		drawIdle() {},
 		animateFlight(_hole, outcome, _shape, opts) {
 			for (const e of outcome.events) opts.onEvent(e)
+			// Holding the flight open is how a real animation behaves for 3-8 s.
+			// Resolving instantly made the in-flight state untestable, which is
+			// why nothing caught that a short Enter did nothing there.
+			if (holdFlight) {
+				pendingDone = opts.onDone
+				return
+			}
 			opts.onDone()
 		},
 		pause() {},
@@ -136,6 +143,10 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 
 	// Recording, not silent: Penny's tap is a cast element delivered as a SOUND,
 	// so the only way to assert it follows the setting is to watch what plays.
+	// Set by a test that needs the flight to stay open; `pendingDone` resolves it.
+	let clearedAll = false
+	let holdFlight = false
+	let pendingDone: (() => void) | null = null
 	const played: string[] = []
 	const sfx: SFX = {
 		play(name: string) {
@@ -149,6 +160,10 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 		load: () => stored,
 		save(d) {
 			stored = d
+		},
+		clearAll() {
+			stored = { settings: { ...DEFAULT_SETTINGS } }
+			clearedAll = true
 		},
 		clearRound() {
 			const { round: _drop, ...rest } = stored
@@ -200,6 +215,14 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 		scanner,
 		machine,
 		played,
+		clearedAll: () => clearedAll,
+		holdFlight: (on: boolean) => {
+			holdFlight = on
+		},
+		endFlight: () => {
+			pendingDone?.()
+			pendingDone = null
+		},
 		pickList: (id: string) => pick(id, h.listIds),
 		pickOverlay: (id: string) => pick(id, h.overlayIds),
 	}
@@ -862,6 +885,86 @@ const flightGapChecks = () => {
 	)
 }
 
+// §12 asks for a pause a switch user can reach without a hold. During the flight
+// animation the scan list is cleared, so a short Enter fell through to an empty
+// scanner and did nothing: the 3 s hold and the pointer-only Pause button were
+// the only routes, which §12 calls a locked door. One press now opens the menu.
+const flightPauseChecks = async () => {
+	const t = makeHarness(BASE_SETTINGS)
+	t.flow.start()
+	// title -> Play -> first course -> rack
+	for (let i = 0; i < 40 && t.listIds()[t.scanner.focusIndex()] !== 'play'; i++)
+		t.scanner.handle('next')
+	t.scanner.handle('select')
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	t.scanner.handle('select') // first course
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	const rack = t.listIds()
+	check('reached a shot rack', rack.includes('cube'), rack.join())
+	// strike, which clears the scanner and starts the flight
+	t.holdFlight(true)
+	for (let i = 0; i < 40 && t.listIds()[t.scanner.focusIndex()] !== 'cube'; i++)
+		t.scanner.handle('next')
+	t.scanner.handle('select')
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	// The scanner is what a switch talks to; the stub hud keeps its last list, so
+	// assert the scanner's own state rather than the stub's bookkeeping.
+	check(
+		'the scanner is cleared during flight',
+		t.scanner.focusIndex() === -1,
+		`${t.scanner.focusIndex()}`,
+	)
+	// ONE press, not a hold
+	t.flow.onSwitch('select')
+	await sleep(30)
+	check(
+		'a single Enter opens the pause menu during flight',
+		t.overlayIds().includes('resume'),
+		t.overlayIds().join(),
+	)
+	t.holdFlight(false)
+	t.endFlight()
+}
+
+// §10 asks for a two-step Reset Progress. This build had none at all — the row
+// is new, and the two-step matters more here than anywhere: it is the only
+// action in Settings that destroys a player's saved holes and best scores, and
+// a mis-timed pick is the normal failure mode of scanning.
+const resetProgressChecks = async () => {
+	const t = makeHarness(BASE_SETTINGS)
+	t.flow.start()
+	for (let i = 0; i < 40 && t.listIds()[t.scanner.focusIndex()] !== 'settings'; i++)
+		t.scanner.handle('next')
+	t.scanner.handle('select')
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	check('Settings has a Reset row', t.listIds().includes('reset'), t.listIds().join())
+	check('the reset row is last before Back', t.listIds().at(-2) === 'reset', t.listIds().join())
+
+	// One pick arms and destroys nothing.
+	for (let i = 0; i < 40 && t.listIds()[t.scanner.focusIndex()] !== 'reset'; i++)
+		t.scanner.handle('next')
+	t.scanner.handle('select')
+	check('one pick of Reset destroys nothing', !t.clearedAll(), 'cleared on the first pick')
+	const armed = t.listSpecs().find((sp) => sp.id === 'reset')
+	check('the armed reset row says so', armed?.label === L.MENU.resetArmed, armed?.label ?? '(gone)')
+	check('the armed reset row holds the scan', armed?.hold === true, `${armed?.hold}`)
+
+	// A second select INSIDE the cooldown is a bounce, not a decision. No sleep
+	// here on purpose — sleeping first was the bug in the first version of this
+	// check, and it reported a guard that was not there yet as working.
+	t.scanner.handle('select')
+	check('a bounce does not confirm the reset', !t.clearedAll(), 'cleared by a bounce')
+
+	// A deliberate second pick does.
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	for (let i = 0; i < 40 && t.listIds()[t.scanner.focusIndex()] !== 'reset'; i++)
+		t.scanner.handle('next')
+	t.scanner.handle('select')
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	check('a second deliberate pick resets', t.clearedAll(), 'not cleared')
+	check('reset returns to the title screen', t.listIds().includes('play'), t.listIds().join())
+}
+
 // ---------- 5a1. the published markdown actually renders ----------
 
 // A GFM table ends at the first blank line. Inserting a paragraph between two
@@ -1321,6 +1424,8 @@ const main = async () => {
 	courseFocusChecks()
 	pluralChecks()
 	flightGapChecks()
+	await flightPauseChecks()
+	await resetProgressChecks()
 	forwardPromiseChecks()
 	markdownChecks()
 	checklistTallyChecks()
@@ -1344,7 +1449,7 @@ const main = async () => {
 	// disappear rather than fail.
 	// Pinning the count is the general fix: any assertion that stops running
 	// takes the suite down with it. Raise this deliberately when adding checks.
-	const EXPECTED_CHECKS = 209
+	const EXPECTED_CHECKS = 220
 	if (results.length !== EXPECTED_CHECKS) {
 		console.log(
 			`menu-check: expected ${EXPECTED_CHECKS} checks, ran ${results.length}. A check that stops running is a check that stopped guarding something; find out which before changing this number.`,

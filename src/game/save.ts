@@ -116,5 +116,16 @@ export function createSave(): SaveAPI {
 				// ignore
 			}
 		},
+
+		clearAll() {
+			// removeItem, not a write of DEFAULT_SETTINGS: the next load() falls
+			// back to defaults anyway, and leaving no key behind is what a player
+			// asking to reset progress means.
+			try {
+				localStorage.removeItem(KEY)
+			} catch {
+				// ignore
+			}
+		},
 	}
 }

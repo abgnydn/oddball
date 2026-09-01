@@ -9,6 +9,7 @@ import { flatReach } from '../sim/physics'
 import { mulberry32 } from '../sim/rng'
 import {
 	COURSES,
+	DEFAULT_SETTINGS,
 	DWELL_MS,
 	EDITOR_OPTIONS,
 	INPUT_COOLDOWN_MS,
@@ -300,6 +301,16 @@ export function createFlow(deps: Deps): Flow {
 	}
 
 	let settingsGoBack: () => void = () => title()
+	// §10's Reset Progress arms on the first pick and acts on the second, like
+	// New round and Exit. It lives OUT here because arming rebuilds the screen,
+	// and a flag declared inside settingsScreen resets itself on the way back in
+	// — which is exactly what happened first: the row never stayed armed.
+	let resetArmed = false
+	// When it armed. The confirm must be a separate act, not a bounce — the same
+	// guard New round and Exit carry. Without it a second select inside the
+	// cooldown wiped every saved hole, which a menu-check assertion caught on
+	// its first run.
+	let resetArmedAt = 0
 
 	const settingsScreen = (goBack: () => void, startIndex = 0): void => {
 		settingsGoBack = goBack
@@ -430,6 +441,7 @@ export function createFlow(deps: Deps): Flow {
 				},
 			},
 		]
+
 		const specs: HudItemSpec[] = rows.map((r) => {
 			const speakFn = L.settingValueSpeak[r.id]
 			const spoken = speakFn ? speakFn(r.value()) : r.value()
@@ -439,13 +451,39 @@ export function createFlow(deps: Deps): Flow {
 				speak: `${spoken} Press Enter to change this setting.`,
 			}
 		})
+		specs.push(
+			resetArmed
+				? { id: 'reset', label: L.MENU.resetArmed, speak: L.MENU.resetArmedSpeak, hold: true }
+				: { id: 'reset', label: L.MENU.resetProgress, speak: L.MENU.resetProgressSpeak },
+		)
 		specs.push({ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak })
 		show(
 			'settings',
 			specs,
 			(id, index) => {
 				if (id === 'back') {
+					resetArmed = false
 					goBack()
+					return
+				}
+				if (id === 'reset') {
+					if (!resetArmed) {
+						resetArmed = true
+						resetArmedAt = Date.now()
+						settingsScreen(goBack, index)
+						return
+					}
+					if (Date.now() - resetArmedAt < INPUT_COOLDOWN_MS) return
+					resetArmed = false
+					save.clearAll()
+					settings = { ...DEFAULT_SETTINGS }
+					round = null
+					customHoles.length = 0
+					best = {}
+					editorDraft = { ...DEFAULT_DRAFT }
+					applySettings()
+					tts.speak(L.MENU.resetDone)
+					title(0)
 					return
 				}
 				const row = rows[index]
@@ -1191,6 +1229,15 @@ export function createFlow(deps: Deps): Flow {
 			if (e === 'menu') {
 				if (hud.overlayOpen()) closeMenu()
 				else openMenu()
+				return
+			}
+			// During the flight animation there is no list, so a short Enter used to
+			// fall through to an empty scanner and do nothing. §12 asks for a pause
+			// "you can scan to and select", and here a switch-only player who cannot
+			// sustain a 3 s hold had no route at all — the hold and the pointer-only
+			// Pause button were the only two. One press opens the menu instead.
+			if (e === 'select' && screen === 'flight' && !hud.overlayOpen()) {
+				openMenu()
 				return
 			}
 			scanner.handle(e)

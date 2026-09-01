@@ -35,13 +35,11 @@ can be silent until you tap once — nothing here unlocks speech synthesis.
 - **Space** — next choice. **Enter** — pick it. **Hold Enter** — menu (it stays
   open). There is also a **Menu** row at the end of both shot lists — a round and
   the practice range — and a Pause button on screen, so reaching the menu never
-  depends on holding a switch down anywhere except the flight animation. There
-  the list is hidden, so the only routes are the 3 s hold and the Pause button,
-  and the Pause button needs a pointer — it is not in the scan order. A
-  switch-only player who cannot hold cannot pause a flight. The panel is gone
-  for 3.45 to 7.95 seconds, which is what the animation constants give. It is longest when the ball goes in,
-  because a hole-out has an afterglow. Turning **Animations** off in Settings
-  removes the animated flight, and with it this gap.
+  depends on holding a switch down. During the flight animation the list is
+  hidden, and there a single **Enter** press opens the menu instead. The list is
+  gone for 3.45 to 7.95 seconds, which is what the animation constants give —
+  longest when the ball goes in, because a hole-out has an afterglow. Turning
+  **Animations** off in Settings removes the animated flight altogether.
 - Hold Space to scan backwards. **Auto Scan** (Settings) moves the highlight by
   itself, so a single switch on Enter is enough. Click/tap also works, and
   there is a hover-to-pick (dwell) mode for head- and eye-tracking users.

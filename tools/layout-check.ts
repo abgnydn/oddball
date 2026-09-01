@@ -126,17 +126,47 @@ const SCALES = [100, 125, 150, 175, 200]
 //       11.4px below the fold at 320x568 @200%, a cell already in this grid.
 //       The pauseOutside detector would have caught it at any magnitude. It
 //       never visited a screen where it happens.
-const SCREENS = ['title', 'settings', 'range', 'overlay', 'rack'] as const
-const SCREEN_ENTRY: Record<(typeof SCREENS)[number], string> = {
-	title: '',
-	settings: 'settings',
-	range: 'practice',
-	overlay: '',
-	rack: '',
+const SCREENS = [
+	'title',
+	'settings',
+	'range',
+	'overlay',
+	'rack',
+	'courses',
+	'twoplayer',
+	'editor',
+	'help',
+	'myholes',
+] as const
+// A click PATH, not a single pattern: the screens below the first level — the
+// course picker, My Holes, the editor — were measured by nothing, and two of the
+// three live defects found in this project were on screens the harness did not
+// visit. Each entry is matched against the visible row text in order.
+const SCREEN_ENTRY: Record<(typeof SCREENS)[number], string[]> = {
+	title: [],
+	settings: ['settings'],
+	range: ['practice'],
+	overlay: [],
+	rack: [],
+	courses: ['^play$'],
+	twoplayer: ['with a friend'],
+	editor: ['make a hole'],
+	help: ['how to play'],
+	// Needs a saved hole to exist; SEEDED_HOLES puts one in the save.
+	myholes: ['^play$', 'my holes'],
 }
 
 // Sunny Meadows hole 5. Seeded through the save rather than played, so the
 // screen is reached in one reload instead of four holes of simulation.
+// One saved hole, so the My Holes screen exists. Named at the length the editor
+// actually produces, because user-generated names are the longest labels there.
+const SEEDED_HOLES = [
+	{
+		name: 'My Hole 10',
+		params: { length: 2, hills: 1, water: 1, sand: 1, wind: 2 },
+	},
+]
+
 const RACK_ROUND = {
 	players: 1,
 	player: 0,
@@ -205,6 +235,7 @@ const SETTINGS = (
 ) =>
 	JSON.stringify({
 		...(round === undefined ? {} : { round }),
+		customHoles: SEEDED_HOLES,
 		settings: {
 			ttsOn: false,
 			ttsRate: 1,
@@ -649,20 +680,26 @@ const main = async () => {
 								console.log(`layout-check: pause menu did not open at ${w}x${h} @${scale}%`)
 								process.exit(1)
 							}
-						} else if (screen !== 'title') {
-							const clicked = await page.evaluate((pattern) => {
-								const rows = [...document.querySelectorAll('.scan-item')]
-								const row = rows.find((r) => new RegExp(pattern, 'i').test(r.textContent ?? ''))
-								row?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-								return row !== undefined
-							}, SCREEN_ENTRY[screen])
-							// A silently-missed click would measure the title screen twice
-							// and report the other screen as clean.
-							if (!clicked) {
-								console.log(`layout-check: could not reach ${screen} at ${w}x${h} @${scale}%`)
-								process.exit(1)
+						} else if (SCREEN_ENTRY[screen].length > 0) {
+							for (const pattern of SCREEN_ENTRY[screen]) {
+								const clicked = await page.evaluate((pat) => {
+									const rows = [...document.querySelectorAll('.scan-item')]
+									const row = rows.find((r) =>
+										new RegExp(pat, 'i').test((r.textContent ?? '').trim()),
+									)
+									row?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+									return row !== undefined
+								}, pattern)
+								// A silently-missed click would measure the previous screen
+								// again and report this one as clean.
+								if (!clicked) {
+									console.log(
+										`layout-check: could not reach ${screen} at ${w}x${h} @${scale}% (no row matching /${pattern}/)`,
+									)
+									process.exit(1)
+								}
+								await page.waitForTimeout(250)
 							}
-							await page.waitForTimeout(250)
 						}
 
 						// Focus each row in turn: the caption bar resizes with the focused
