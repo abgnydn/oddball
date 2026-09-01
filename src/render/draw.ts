@@ -37,9 +37,9 @@ const PAD_TOP = 24
 
 // ---------- playback tuning ----------
 
-const MIN_PLAY_S = 3
-const MAX_PLAY_S = 6
-const PRE_S = 0.45 // anticipation pre-roll: lean-back beat before the launch
+export const MIN_PLAY_S = 3
+export const MAX_PLAY_S = 6
+export const PRE_S = 0.45 // anticipation pre-roll: lean-back beat before the launch
 const PLAY_SCALE = 0.9 // wall seconds per sim second, before clamping
 const TRAIL_FADE_S = 2.5 // sim-time window over which a trail segment fades
 const TRAIL_MIN_ALPHA = 0.25 // old trail stays faintly visible
@@ -54,7 +54,7 @@ const STRIPE_ALPHA = 0.16 // near the tee; fades to 0 with distance (stripes rea
 const BEEP_NEAR_M = 20 // rolling ball within this of the cup → beeper ring
 const AFTER_BEAT_S = 0.5 // holed: beat of stillness before the pulse
 const AFTER_PULSE_S = 0.7 // holed: pulse ring expansion time
-const AFTER_TOTAL_S = 1.5 // holed: total afterglow before onDone
+export const AFTER_TOTAL_S = 1.5 // holed: total afterglow before onDone
 const PENNY_TAP_AT = 0.06 // Penny's single tap-bounce, inside the still beat
 const PENNY_TAP_S = 0.34
 

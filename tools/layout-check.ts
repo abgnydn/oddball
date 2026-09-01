@@ -457,7 +457,7 @@ const main = async () => {
 		const probes = await page.evaluate(() => {
 			const panel = document.querySelector('.scan-panel') as HTMLElement
 			const row = document.querySelector('.scan-panel .scan-item') as HTMLElement
-			const pause = document.querySelector('.footer-pause') as HTMLElement
+			const pause = document.querySelector('.footer-pause') as HTMLElement | null
 			const cs = getComputedStyle(panel)
 			// (a) a row taller than the panel must register as clipped
 			const oldH = row.style.minHeight
@@ -476,11 +476,17 @@ const main = async () => {
 			rr = row.getBoundingClientRect()
 			const hOver = rr.right > pr.right + 1 || row.scrollWidth - row.clientWidth > 1
 			row.style.width = oldW
-			// (c) a displaced Pause must register as outside the viewport
-			const oldT = pause.style.transform
-			pause.style.transform = 'translateY(9000px)'
-			const outside = pause.getBoundingClientRect().bottom - innerHeight
-			pause.style.transform = oldT
+			// (c) a displaced Pause must register as outside the viewport. A MISSING
+			// one is reported as 9999, not thrown: the harness used to die here
+			// with a TypeError, which reads as a broken tool rather than a broken
+			// build, and the per-cell detector would have said nothing.
+			let outside = 9999
+			if (pause !== null) {
+				const oldT = pause.style.transform
+				pause.style.transform = 'translateY(9000px)'
+				outside = pause.getBoundingClientRect().bottom - innerHeight
+				pause.style.transform = oldT
+			}
 			// (d) an absurdly wide ring on an unclipped row must register as cut.
 			// Forced with an inline outline rather than by moving the row: the
 			// point is that the ROW is fine and only the ring is lost, which is
@@ -750,9 +756,12 @@ const main = async () => {
 								}
 								const pause = document.querySelector('.footer-pause') as HTMLElement | null
 								const pr = pause?.getBoundingClientRect()
+								// A MISSING Pause button fails the cell. It used to report -1,
+								// which is not > 0, so a build with no Pause button anywhere
+								// would have passed all 2475 cells.
 								const outside =
 									pr === undefined
-										? -1
+										? 9999
 										: +Math.max(
 												0,
 												pr.bottom - innerHeight,

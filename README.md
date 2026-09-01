@@ -23,11 +23,14 @@ affiliation. The names above cite their contract and claim no connection to it.
 
 ## Playing
 
-**Setting it up for one switch.** Map the switch to Enter. In Settings, turn
-**Auto scan** on and set **Scan speed** to the slowest rung your player is
-comfortable with. If your player cannot hold a switch down, also turn
-**Animations** off: that removes the flight animation, which is the one place
-the menu is not scannable. Settings save in the browser.
+**Setting it up for one switch.** Map the switch to Enter — in your switch
+interface's own software; the game has no remapping. In Settings, turn **Auto
+scan** on and set **Scan speed** to the longest interval your player needs; the
+rungs are 1, 2, 3 and 4 seconds. If your player cannot hold a switch down, also
+turn **Animations** off: that removes the flight animation, which is the one
+place the menu is not scannable. Settings are saved in the browser, so clearing
+site data resets them and any round in progress. On iOS the first spoken line
+can be silent until you tap once — nothing here unlocks speech synthesis.
 
 - **Space** — next choice. **Enter** — pick it. **Hold Enter** — menu (it stays
   open). There is also a **Menu** row at the end of both shot lists — a round and

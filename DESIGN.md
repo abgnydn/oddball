@@ -47,7 +47,7 @@ below lists the places found so far.
   the keyup handler bails out before it can select (`js/input.js`).
   Sourcing for 3 s: §4 gives the convention as ~3 s to scan backwards and ~5 s
   to pause and asks new games to match, while noting no shared file enforces
-  either — Mini Golf uses 6 s, and only during play. This build uses 3 s,
+  either — Mini Golf uses 6 s, and only during play (not reported to them yet). This build uses 3 s,
   matching its own hold-Space threshold, and so departs from the ~5 s figure
   deliberately (listed below).
 - **New round and Exit are two-step.** Both throw away a round in progress, so
@@ -128,7 +128,7 @@ this sentence is a summary of them and summaries drift.
 | Menu actions fire on **release**, not press | met (`switch.ts` emits on keyup; `input-check` asserts it) |
 | Holding Space scans backwards "in every menu", repeating at the player's scan speed from `NarbeScanManager` — "not a rate you picked" | **different route.** Every menu, at the player's saved speed. The speed comes from this build's own copy of that setting, because there is no `NarbeScanManager` to read |
 | Holding Enter opens pause from anywhere in gameplay, with a visible and audible indication while holding | **not met.** The hold works everywhere including flight, but nothing indicates progress during it. §4 asks for the same thing and the row above says so |
-| An on-screen Pause button does the same | met |
+| An on-screen Pause button does the same | met. The hold-progress requirement in the row above does not apply to a button press |
 | Settings reachable from **both** the main menu and the pause menu | **not met.** Both, except during the flight animation, where the item is hidden. "Different route" would mean equivalent behaviour reached another way; this is one place it is not reachable |
 | Auto Scan and Scan Speed present, reading from `NarbeScanManager` | **different route.** Present, from this build's own copies |
 | TTS reads focus, selection and outcomes, via `NarbeVoiceManager` | **different route.** All three are read; the engine is raw `speechSynthesis` |
@@ -497,9 +497,9 @@ under the claim establishes. Every item below was one of those claims:
   island green, canyon carry, ascending washboard, a 10 m wall, tailwind bomb).
   Pars measured per hole; 1P best-total per course tracked and spoken in the picker.
 - **Pass-and-play 2P**: each hole is played out by Player 1, then Player 2 from the
-  tee; per-player scorecards; gentle match verdict. Same input grammar throughout.
-- **Practice range**: no cup, no score; every shot from the tee, narrated. The #1
-  parent request (cause-and-effect) as its own mode.
+  tee; per-player scorecards; a match verdict naming the winner. Same input grammar throughout.
+- **Practice range**: no cup, no score; every shot from the tee, narrated.
+  Cause-and-effect play as its own mode.
 - **Make a Hole**: parameter-combo editor (length/ground/water/sand/wind rows that
   cycle like settings) — every combo is playable BY CONSTRUCTION (composer clamps
   geometry; tools/editor-check.ts asserts it). Par is MEASURED by simulating the

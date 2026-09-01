@@ -20,6 +20,10 @@
 		"mutate": "esbuild tools/mutate.ts --bundle --platform=node --format=esm --log-level=warning --packages=external --outfile=node_modules/.cache/mutate.mjs && node node_modules/.cache/mutate.mjs",
 		"deploy": "pnpm build && pnpm layout-check && wrangler pages deploy dist --project-name oddball"
 	},
+	"engines": {
+		"node": ">=22",
+		"pnpm": ">=10"
+	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.7",
 		"@types/node": "^26.1.2",

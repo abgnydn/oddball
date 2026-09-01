@@ -17,6 +17,7 @@ import { createFlow } from '../src/game/flow'
 import * as L from '../src/game/lines'
 import { createScanner } from '../src/input/scanner'
 import { createSwitchMachine } from '../src/input/switch'
+import { AFTER_TOTAL_S, MAX_PLAY_S, MIN_PLAY_S, PRE_S } from '../src/render/draw'
 import { createSim } from '../src/sim/physics'
 import { createTTS } from '../src/speech/tts'
 import {
@@ -835,6 +836,32 @@ const forwardPromiseChecks = () => {
 	)
 }
 
+// The flight-gap figure is on two public surfaces and had no generator. It was
+// wrong for a whole round (3-6 s, taken from two constants without the two
+// either side), then wrong again in a different way. This recomputes it from
+// the four constants and holds both documents to the result.
+const flightGapChecks = () => {
+	const lo = (PRE_S + MIN_PLAY_S).toFixed(2)
+	const hi = (PRE_S + MAX_PLAY_S + AFTER_TOTAL_S).toFixed(2)
+	const noGlow = (PRE_S + MAX_PLAY_S).toFixed(2)
+	const range = `${lo}-${hi}`
+	for (const doc of ['README.md', 'DESIGN.md']) {
+		const text = readFileSync(join(REPO_ROOT, doc), 'utf8')
+		if (!/flight|animation runs|panel is gone/i.test(text)) continue
+		check(
+			`${doc} states the flight gap as ${range} s`,
+			text.includes(range) || text.includes(range.replace('-', ' to ')),
+			`expected ${range} from PRE_S+MIN_PLAY_S .. PRE_S+MAX_PLAY_S+AFTER_TOTAL_S`,
+		)
+	}
+	const design = readFileSync(join(REPO_ROOT, 'DESIGN.md'), 'utf8')
+	check(
+		`DESIGN.md states the no-afterglow ceiling as ${noGlow} s`,
+		design.includes(`${lo}-${noGlow}`),
+		`expected ${lo}-${noGlow} for reduce-motion (no hole-out afterglow)`,
+	)
+}
+
 // ---------- 5a1. the published markdown actually renders ----------
 
 // A GFM table ends at the first blank line. Inserting a paragraph between two
@@ -1293,6 +1320,7 @@ const main = async () => {
 	settingsSpeechChecks()
 	courseFocusChecks()
 	pluralChecks()
+	flightGapChecks()
 	forwardPromiseChecks()
 	markdownChecks()
 	checklistTallyChecks()
@@ -1316,7 +1344,7 @@ const main = async () => {
 	// disappear rather than fail.
 	// Pinning the count is the general fix: any assertion that stops running
 	// takes the suite down with it. Raise this deliberately when adding checks.
-	const EXPECTED_CHECKS = 206
+	const EXPECTED_CHECKS = 209
 	if (results.length !== EXPECTED_CHECKS) {
 		console.log(
 			`menu-check: expected ${EXPECTED_CHECKS} checks, ran ${results.length}. A check that stops running is a check that stopped guarding something; find out which before changing this number.`,
