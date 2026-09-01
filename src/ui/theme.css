@@ -565,10 +565,13 @@ body {
    legend wraps to three lines; crossing 560px of height into 561 then took the
    footer from 67px to 216.2px and pushed the document 1px past the viewport at
    the shipped 125 % default.
-   320, not 400. The first version used 400px. Of the 120 grid cells where this
-   rule is the sole hider (24 viewport x scale combinations), neutering it
-   breaks 4 — 280x561 and 300x561 at 125 %, on settings and rack, 1px of
-   vertical document overflow — and fits in 116. At 390x844, an iPhone 12/13 in
+   320, not 400. The first version used 400px. Of the 60 grid cells where this
+   rule is the sole hider (12 viewport x scale combinations: six viewports no
+   wider than 320px and taller than 560px, at 100 % and 125 % — the five narrow
+   viewports 560px or shorter are already covered by the max-height rule below,
+   and 150 %+ by the font-keyed rules above), neutering it breaks 4 — 280x561
+   and 300x561 at 125 %, on settings and rack, 1px of vertical document
+   overflow — and fits in 56. At 390x844, an iPhone 12/13 in
    portrait, the legend fits on two lines at 100 % and 125 %, and the 400px rule
    removed it there anyway. The only on-screen reminder of the keys should not
    go where nothing was starved. */
