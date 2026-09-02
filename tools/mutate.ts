@@ -283,8 +283,8 @@ MUTATIONS.push(
 		edits: [
 			[
 				DESIGN,
-				'**8 met, 3 met by a different route, 7 not met**',
-				'**9 met, 3 met by a different route, 6 not met**',
+				'**12 met, 3 met by a different route, 3 not met**',
+				'**13 met, 3 met by a different route, 2 not met**',
 			],
 		],
 	},
