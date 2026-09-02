@@ -988,3 +988,44 @@ html[data-reduce-motion='true'] * {
 html[data-reduce-motion='true'] [data-scan-focus='true'] {
 	box-shadow: none;
 }
+
+/* Hold-progress ring (§4). Appears partway through a hold and fills to the
+   threshold, so the gesture is visibly in progress rather than apparently
+   dead. Centred on the play area, never in the scan order, and pointer-inert
+   so it cannot swallow a click meant for the canvas underneath. */
+.hold-ring {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: min(28vmin, 160px);
+	height: min(28vmin, 160px);
+	display: none;
+	pointer-events: none;
+	z-index: 3;
+}
+.hold-ring.on {
+	display: block;
+}
+.hold-ring svg {
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg); /* fill clockwise from twelve o'clock */
+}
+.hold-ring circle {
+	fill: none;
+	stroke-width: 8;
+	stroke-linecap: round;
+}
+.hold-ring .track {
+	stroke: rgb(0 0 0 / 0.55);
+}
+.hold-ring .fill {
+	stroke: var(--focus-ring);
+	transition: stroke-dashoffset 60ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+	.hold-ring .fill {
+		transition: none;
+	}
+}

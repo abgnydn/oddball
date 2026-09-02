@@ -6,7 +6,7 @@ import { createSwitchInput } from './input/switch'
 import { createRenderer } from './render/draw'
 import { createSim } from './sim/physics'
 import { createTTS } from './speech/tts'
-import { RETURN_HOLD_MS } from './tuning'
+import { HOLD_SHOW_MS, RETURN_HOLD_MS } from './tuning'
 import { createHud } from './ui/hud'
 
 const root = document.getElementById('app')
@@ -27,11 +27,12 @@ const scanner = createScanner()
 // steps the highlight while a hole intro is still being read, and the next
 // focus utterance cancels the intro mid-sentence.
 tts.onHoldChange((holding) => scanner.setAutoHold(holding))
+const sfx = createSFX()
 const flow = createFlow({
 	hud,
 	scanner,
 	tts,
-	sfx: createSFX(),
+	sfx,
 	renderer,
 	sim: createSim(),
 	save: createSave(),
@@ -40,6 +41,40 @@ const flow = createFlow({
 const input = createSwitchInput(() => !hud.overlayOpen())
 input.on((e) => flow.onSwitch(e))
 input.start()
+
+// Hold-progress ring and rising beep (§4). A hold that shows nothing reads as
+// broken, so partway through the gesture a ring appears and fills, and a blip
+// a step higher each second makes it audible with eyes closed. Race Tracks is
+// the build §4 names; this matches its shape at this build's 3 s threshold.
+//
+// Driven by one rAF poll rather than a timer per press: the switch machine owns
+// the thresholds, and a poll cannot drift out of step with them or leave a
+// stray timer behind when a press is cancelled by blur.
+let pointerHoldAt = 0 // set while a pointer press is down; 0 when it is not
+let holdBeepAt = 0 // last whole second already beeped, per gesture
+const holdTick = (): void => {
+	// The pointer hold and the Enter hold open the same menu, so whichever is
+	// further along drives the ring. Space's backward-scan hold gets it too:
+	// it is the same gesture cost, and §4 does not exempt it.
+	const held = Math.max(
+		input.heldFor('return'),
+		input.heldFor('space'),
+		pointerHoldAt ? Date.now() - pointerHoldAt : 0,
+	)
+	if (held <= 0) {
+		hud.holdProgress(null)
+		holdBeepAt = 0
+	} else if (held >= HOLD_SHOW_MS) {
+		hud.holdProgress((held - HOLD_SHOW_MS) / (RETURN_HOLD_MS - HOLD_SHOW_MS))
+		const secs = Math.floor(held / 1000)
+		if (secs > holdBeepAt) {
+			holdBeepAt = secs
+			sfx.holdBeep(secs)
+		}
+	}
+	requestAnimationFrame(holdTick)
+}
+requestAnimationFrame(holdTick)
 
 // Pointer parity (per the guide): click selects (the scanner wires that on the
 // items); click-and-HOLD anywhere opens the context menu, like holding Enter.
@@ -61,6 +96,7 @@ let holdFiredMenu = false // this press opened the menu; its click is not a pick
 let holdOpenedMenuAt = 0 // set on release, so the window covers any hold length
 const HOLD_CLICK_WINDOW_MS = 1000
 const cancelHold = () => {
+	pointerHoldAt = 0 // ring is driven off this; a stale value leaves it stuck on
 	if (holdTimer !== null) {
 		clearTimeout(holdTimer)
 		holdTimer = null
@@ -80,6 +116,7 @@ document.addEventListener('pointerdown', () => {
 	cancelHold() // one live timer max — a second finger must not orphan the first
 	holdFiredMenu = false
 	holdOpenedMenuAt = 0
+	pointerHoldAt = Date.now() // feeds the hold-progress ring
 	holdTimer = setTimeout(() => {
 		holdTimer = null
 		if (hud.overlayOpen()) return // already open: this is an ordinary pick

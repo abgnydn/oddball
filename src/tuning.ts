@@ -513,6 +513,17 @@ export const SPACE_HOLD_MS = 3000 // hold-Space → backward scanning (shipped-h
 export const RETURN_HOLD_MS = 3000
 export const INPUT_COOLDOWN_MS = 250
 
+/** Hold-progress indication (§4). A hold with no feedback reads as broken:
+ *  "a player who is told 'hold for 5 seconds' and counts to five while nothing
+ *  visible happens will reasonably conclude it is broken". §4 names Race Tracks
+ *  as the build to copy — a ring that appears partway through and fills, plus a
+ *  rising beep each second "so it works with eyes closed".
+ *  Race Tracks shows its ring at 2000 of 5000 ms; the same fraction of this
+ *  build's 3000 ms threshold is 1200 ms. The beep figures are its own. */
+export const HOLD_SHOW_MS = 1200
+export const HOLD_BEEP_F0 = 300 // Hz on the first whole second of the hold
+export const HOLD_BEEP_STEP = 90 // Hz added per further second
+
 /** px the pointer must travel from where it sat when a list was rebuilt before
  *  hover-to-pick will start again. Any movement at all would be defeated by an
  *  eye tracker's constant jitter, which is the input this guard exists for; a

@@ -45,11 +45,15 @@ can be silent until you tap once — nothing here unlocks speech synthesis.
   there is a hover-to-pick (dwell) mode for head- and eye-tracking users.
 - Starting a new round, leaving a round, and deleting a saved hole all ask
   twice, because a mis-timed pick is an ordinary event when you scan (the
-  NARBE hub's own accessibility notes make the same point).
+  NARBE hub's own accessibility notes make the same point). The second ask is a
+  two-row dialog with the "no" answer first and the scan trapped between the
+  two, so over-scanning cannot land on the destructive one.
 - **Nobody has played this start to finish with one switch.** The hub's
   checklist calls that the only test that counts, and it is not ticked. The
   one-switch path is covered by harness and by hand; DESIGN.md lists that gap
   alongside the others.
+- Holding a switch shows a ring that fills, and beeps a step higher each
+  second, so a hold that is working does not look like a switch that is dead.
 - Everything is spoken and captioned. A tone rises with the ball's height. The
   cup beeper speeds up as a rolling ball gets close. Every screen is spoken, so
   the screen should not be needed to play — but nobody has played it through

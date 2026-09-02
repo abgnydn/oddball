@@ -11,9 +11,7 @@
 // Both keys are tracked independently, each with its own release cooldown.
 
 import { INPUT_COOLDOWN_MS, RETURN_HOLD_MS, SPACE_HOLD_MS } from '../tuning'
-import type { SwitchEvent, SwitchInput } from '../types'
-
-type SwitchKey = 'space' | 'return'
+import type { SwitchEvent, SwitchInput, SwitchKey } from '../types'
 
 export interface SwitchMachine {
 	down(key: SwitchKey): void
@@ -22,12 +20,17 @@ export interface SwitchMachine {
 	 *  firing press events. If backward scanning is active it emits 'autostop' so
 	 *  the scanner never keeps stepping after the keyup is lost. */
 	cancel(): void
+	/** ms this key has been held, or 0 when it is not held. Polled by the
+	 *  hold-progress ring (§4); the machine keeps no timer of its own for it, so
+	 *  a headless test can drive `down`/`up` without a frame loop running. */
+	heldFor(key: SwitchKey): number
 }
 
 interface KeyState {
 	held: boolean
 	thresholdFired: boolean
 	timer: ReturnType<typeof setTimeout> | null
+	downAt: number
 }
 
 /** Timing state machine behind createSwitchInput — exported so headless tests
@@ -41,8 +44,8 @@ export function createSwitchMachine(
 	canOpenMenu: () => boolean = () => true,
 ): SwitchMachine {
 	const keys: Record<SwitchKey, KeyState> = {
-		space: { held: false, thresholdFired: false, timer: null },
-		return: { held: false, thresholdFired: false, timer: null },
+		space: { held: false, thresholdFired: false, timer: null, downAt: 0 },
+		return: { held: false, thresholdFired: false, timer: null, downAt: 0 },
 	}
 	// Post-release cooldown: a switch that bounces (or a tremor) re-presses
 	// within this window; ignore it (the shipped hub's anti-bounce guard).
@@ -62,6 +65,7 @@ export function createSwitchMachine(
 			if (Date.now() - lastUp[key] < cooldownMs) return
 			s.held = true
 			s.thresholdFired = false
+			s.downAt = Date.now()
 			s.timer = setTimeout(() => {
 				s.timer = null
 				// Leaving thresholdFired false is the point: the release then
@@ -88,6 +92,10 @@ export function createSwitchMachine(
 			} else {
 				emit(key === 'space' ? 'next' : 'select')
 			}
+		},
+		heldFor(key) {
+			const s = keys[key]
+			return s.held ? Date.now() - s.downAt : 0
 		},
 		cancel() {
 			for (const key of ['space', 'return'] as const) {
@@ -138,6 +146,9 @@ export function createSwitchInput(canOpenMenu?: () => boolean): SwitchInput {
 	return {
 		on(cb) {
 			cbs.push(cb)
+		},
+		heldFor(key) {
+			return machine.heldFor(key)
 		},
 		start() {
 			window.addEventListener('keydown', onKeydown)

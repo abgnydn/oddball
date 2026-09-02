@@ -30,6 +30,9 @@ export interface Hud {
 	caption(text: string): void
 	footerFocus(label: string): void
 	/** Show the context-menu overlay; returns its ScanItems. */
+	/** Hold-progress ring (§4). `p` is 0..1 once the hold passes HOLD_SHOW_MS;
+	 *  null hides it. Purely an indicator — it never selects anything. */
+	holdProgress(p: number | null): void
 	overlay(items: HudItemSpec[]): ScanItem[]
 	hideOverlay(): void
 	overlayOpen(): boolean
@@ -111,6 +114,19 @@ export function createHud(root: HTMLElement): Hud {
 	pauseBtn.type = 'button'
 	footer.append(mode, focus, legend, pauseBtn)
 
+	// Hold-progress ring. §4: a hold with no feedback reads as broken, so
+	// partway through the gesture a ring appears and fills. Sits over the canvas
+	// and is never in the scan order — it indicates, it does not select.
+	const ringWrap = el('div', 'hold-ring')
+	ringWrap.setAttribute('aria-hidden', 'true')
+	ringWrap.innerHTML =
+		'<svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="40"/>' +
+		'<circle class="fill" cx="50" cy="50" r="40"/></svg>'
+	const ringFill = ringWrap.querySelector('.fill') as SVGCircleElement
+	const RING_LEN = 2 * Math.PI * 40
+	ringFill.style.strokeDasharray = String(RING_LEN)
+	canvasWrap.appendChild(ringWrap)
+
 	const overlayEl = el('div', 'overlay')
 	const overlayPanel = el('div', 'overlay-panel')
 	overlayEl.appendChild(overlayPanel)
@@ -137,6 +153,14 @@ export function createHud(root: HTMLElement): Hud {
 				last = now
 				cb()
 			})
+		},
+		holdProgress(p) {
+			if (p === null) {
+				ringWrap.classList.remove('on')
+				return
+			}
+			ringWrap.classList.add('on')
+			ringFill.style.strokeDashoffset = String(RING_LEN * (1 - Math.min(1, Math.max(0, p))))
 		},
 		scanList(items) {
 			return buildList(panel, items)

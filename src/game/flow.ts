@@ -561,28 +561,37 @@ export function createFlow(deps: Deps): Flow {
 		}
 		hud.setScreen(custom.name)
 		hud.setMode('Menu')
-		const specs: HudItemSpec[] = [
-			{ id: 'play', label: L.MENU.playThis, speak: L.MENU.playThisSpeak },
-			armDelete
-				? {
+		// Armed, this is a confirm dialog and takes §10's shape: cancel FIRST in the
+		// scan order, and nothing else on the list — the scan is trapped between
+		// the two answers, so over-scanning cannot reach Play or wrap onto Delete
+		// from the far side. Unarmed it is an ordinary three-row menu.
+		const specs: HudItemSpec[] = armDelete
+			? [
+					{ id: 'back', label: L.MENU.cancel, speak: L.MENU.cancelSpeak },
+					{
 						id: 'delete',
 						label: L.MENU.deleteArmed,
 						speak: L.MENU.deleteArmedSpeak,
 						hold: true,
-					}
-				: { id: 'delete', label: L.MENU.deleteThis, speak: L.MENU.deleteThisSpeak },
-			{ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak },
-		]
+					},
+				]
+			: [
+					{ id: 'play', label: L.MENU.playThis, speak: L.MENU.playThisSpeak },
+					{ id: 'delete', label: L.MENU.deleteThis, speak: L.MENU.deleteThisSpeak },
+					{ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak },
+				]
 		show(
 			'holemenu',
 			specs,
-			(id, index) => {
+			(id) => {
 				if (id === 'play') {
 					playCustom(players, custom)
 				} else if (id === 'delete') {
 					if (!armDelete) {
 						armedDeleteAt = Date.now()
-						holeMenu(players, holeIdx, index, true)
+						// Focus lands on Cancel, not on the armed Delete: the confirm
+						// should open on the safe answer.
+						holeMenu(players, holeIdx, 0, true)
 						return
 					}
 					if (Date.now() - armedDeleteAt < INPUT_COOLDOWN_MS) return
@@ -1095,6 +1104,20 @@ export function createFlow(deps: Deps): Flow {
 
 	// ---------- context menu ----------
 
+	/** Hand focus back to the hub when embedded. Returns false when this build is
+	 *  running standalone, so the caller falls back to its own title screen.
+	 *  Matches the shape their games use (BENNYSBUGBLASTER game.js and others):
+	 *  postMessage to the parent, guarded on there being a different parent. */
+	const exitToHub = (): boolean => {
+		try {
+			if (typeof window === 'undefined' || window.parent === window) return false
+			window.parent.postMessage({ action: 'focusBackButton' }, '*')
+			return true
+		} catch {
+			return false // cross-origin parent that refuses postMessage: stay put
+		}
+	}
+
 	const closeMenu = (): void => {
 		hud.hideOverlay()
 		if (screen === 'flight') {
@@ -1123,6 +1146,25 @@ export function createFlow(deps: Deps): Flow {
 		const wasTitle = screen === 'title'
 		if (!inFlight) {
 			underlayRestore = () => prevRebuild(Math.max(prevIndex, 0))
+		} else {
+			// §10 wants Settings from BOTH menus. It used to be dropped in flight
+			// because there was no route back: the shot list is gone and the ball is
+			// mid-animation. Reopening this menu is that route — the flight stays
+			// paused underneath, so Settings behaves here like anywhere else.
+			//
+			// show() reassigns `screen`, so Settings leaves it on 'settings'. The
+			// flight state has to go back before the menu reopens, or closeMenu()
+			// takes its non-flight branch, Resume drops the player back into
+			// Settings, and the paused renderer is never resumed again.
+			const label = screen === 'flight' && round ? (curHole()?.name ?? '') : 'The Range'
+			underlayRestore = () => {
+				screen = 'flight'
+				scanner.clear()
+				hud.showPanel(false)
+				hud.setScreen(label)
+				hud.setMode('Watch!')
+				openMenu()
+			}
 		}
 		// New round and Exit throw away a round in progress. Both arm on the first
 		// pick and only act on a second — a mis-timed select, which is the normal
@@ -1133,14 +1175,12 @@ export function createFlow(deps: Deps): Flow {
 		// armed and an Enter 30 ms later slipped through both.
 		let armedAt = 0
 		const menuSpecs = (): HudItemSpec[] => {
-			const specs: HudItemSpec[] = [
-				{ id: 'resume', label: L.MENU.resume, speak: L.MENU.resumeSpeak },
-			]
-			if (round) specs.push({ id: 'where', label: L.MENU.whereAmI, speak: L.MENU.whereAmISpeak })
-			if (!inFlight)
-				specs.push({ id: 'settings', label: L.MENU.settings, speak: L.MENU.settingsSpeak })
-			if (round)
-				specs.push(
+			// Armed, the menu becomes a confirm dialog in §10's shape: cancel first,
+			// the destructive answer second, and nothing else reachable. Resume is
+			// the cancel here — it is what "no" means from the pause menu.
+			if (armed !== null)
+				return [
+					{ id: 'resume', label: L.MENU.cancel, speak: L.MENU.cancelSpeak },
 					armed === 'new'
 						? {
 								id: 'new',
@@ -1148,26 +1188,28 @@ export function createFlow(deps: Deps): Flow {
 								speak: L.MENU.newRoundArmedSpeak,
 								hold: true,
 							}
-						: { id: 'new', label: L.MENU.newRound, speak: L.MENU.newRoundSpeak },
-				)
-			if (!wasTitle)
-				specs.push(
-					armed === 'exit'
-						? { id: 'exit', label: L.MENU.exitArmed, speak: L.MENU.exitArmedSpeak, hold: true }
-						: { id: 'exit', label: L.MENU.exit, speak: L.MENU.exitSpeak },
-				)
+						: { id: 'exit', label: L.MENU.exitArmed, speak: L.MENU.exitArmedSpeak, hold: true },
+				]
+			const specs: HudItemSpec[] = [
+				{ id: 'resume', label: L.MENU.resume, speak: L.MENU.resumeSpeak },
+			]
+			if (round) specs.push({ id: 'where', label: L.MENU.whereAmI, speak: L.MENU.whereAmISpeak })
+			specs.push({ id: 'settings', label: L.MENU.settings, speak: L.MENU.settingsSpeak })
+			if (round) specs.push({ id: 'new', label: L.MENU.newRound, speak: L.MENU.newRoundSpeak })
+			if (!wasTitle) specs.push({ id: 'exit', label: L.MENU.exit, speak: L.MENU.exitSpeak })
 			return specs
 		}
 		const showMenu = (startIndex: number): void => {
 			const items = hud.overlay(menuSpecs())
 			scanner.setItems(items, { startIndex })
 		}
-		overlaySelect = (id, index) => {
+		overlaySelect = (id) => {
 			if (id === 'new' || id === 'exit') {
 				if (armed !== id) {
 					armed = id
 					armedAt = Date.now()
-					showMenu(index) // re-render armed; the focus handler speaks the warning
+					// Opens on the cancel row, not the destructive one.
+					showMenu(0) // re-render armed; the focus handler speaks the warning
 					return
 				}
 				if (Date.now() - armedAt < INPUT_COOLDOWN_MS) return // too fast to be a decision
@@ -1209,6 +1251,12 @@ export function createFlow(deps: Deps): Flow {
 				sfx.tone(null)
 				hud.hideOverlay()
 				underlayRestore = null
+				// §10: Exit Game posts focusBackButton to the parent, so the hub takes
+				// the scan focus back to the button the player launched from. The hub
+				// runs its games in an iframe; standalone there is no parent, and the
+				// same item returns to this build's own title instead. Their games
+				// guard on `window.parent !== window` for exactly that reason.
+				if (exitToHub()) return
 				title()
 			}
 		}

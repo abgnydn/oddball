@@ -46,6 +46,12 @@ export const MENU = {
 	settingsSpeak: 'Settings. Change the speech, the colors, and more.',
 	back: 'Back',
 	backSpeak: 'Back. Go to the last screen.',
+	// The cancel route out of an armed confirm. §10 wants it FIRST in the scan
+	// order, so a player who over-scans lands on the safe option, never the
+	// destructive one. Worded as its own thing, not "Back" — at this point the
+	// question on screen is a yes/no, and "No" is the answer to it.
+	cancel: 'No — keep it',
+	cancelSpeak: 'No. Keep it, and go back.',
 	playAgain: 'Play again',
 	playAgainSpeak: 'Play again. Start a new round.',
 	openMenu: 'Menu',

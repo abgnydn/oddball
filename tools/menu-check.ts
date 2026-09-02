@@ -23,8 +23,11 @@ import { createTTS } from '../src/speech/tts'
 import {
 	COURSES,
 	DEFAULT_SETTINGS,
+	HOLD_BEEP_STEP,
+	HOLD_SHOW_MS,
 	INPUT_COOLDOWN_MS,
 	MAX_CUSTOM_HOLES,
+	RETURN_HOLD_MS,
 	SHAPE_ORDER,
 	SHAPES,
 } from '../src/tuning'
@@ -102,6 +105,7 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 		setScreen() {},
 		setMode() {},
 		onPause() {},
+		holdProgress() {},
 		scanList(items) {
 			list = items
 			return toItems(items)
@@ -153,6 +157,7 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 			played.push(name)
 		},
 		tone() {},
+		holdBeep() {},
 		setEnabled() {},
 	}
 
@@ -744,6 +749,156 @@ const pointerBounceChecks = async () => {
 // scan timer, so whatever comes after the first couple of seconds is not heard
 // by an auto-scanning player. The yardage decides the shot, so it has to be in
 // that window; the character blurb does not and can be cut off.
+// ---------- confirm dialogs take §10's shape ----------
+// §10: a confirm sits behind "Cancel first in the scan order and the scan
+// trapped in the dialog". These confirms used to leave the whole menu on
+// screen with the cancel route LAST, which is the wrong way round for a
+// scanning player: over-scanning by one landed on the destructive answer, and
+// wrapping reached it from the other side too.
+const confirmShapeChecks = async () => {
+	const t = makeHarness({ ...BASE_SETTINGS }, [
+		{ name: 'My Hole 1', params: { length: 1, hills: 0, water: 0, sand: 0, wind: 2 } },
+	])
+	t.flow.start()
+	t.pickList('play')
+	t.pickList('myholes')
+	t.pickList('hole-0')
+	t.pickList('delete')
+	const ids = t.listIds()
+	check(
+		'armed delete: the scan is trapped between exactly two answers',
+		ids.length === 2,
+		`list = [${ids.join()}]`,
+	)
+	check(
+		'armed delete: cancel is FIRST in the scan order',
+		ids[0] === 'back',
+		`list = [${ids.join()}]`,
+	)
+	check(
+		'armed delete: the destructive answer is second',
+		ids[1] === 'delete',
+		`list = [${ids.join()}]`,
+	)
+	check(
+		'armed delete: the cancel row is worded as an answer, not "Back"',
+		t.listLabels()[0] === L.MENU.cancel,
+		t.listLabels().join(' | '),
+	)
+	check(
+		'armed delete: focus opens on the cancel row',
+		t.scanner.focusIndex() === 0,
+		`focus = ${t.scanner.focusIndex()}`,
+	)
+	check(
+		'armed delete: cancelling leaves the hole alone',
+		(() => {
+			t.pickList('back')
+			return (t.stored().customHoles ?? []).length === 1
+		})(),
+		'cancel must not delete',
+	)
+
+	// the pause menu's two destructive rows take the same shape
+	const t2 = makeHarness({ ...BASE_SETTINGS })
+	t2.flow.start()
+	t2.pickList('play')
+	t2.pickList('course-0')
+	t2.flow.onSwitch('menu')
+	t2.pickOverlay('new')
+	const nIds = t2.overlayIds()
+	check(
+		'armed New round: the scan is trapped between exactly two answers',
+		nIds.length === 2,
+		`overlay = [${nIds.join()}]`,
+	)
+	check(
+		'armed New round: cancel is FIRST in the scan order',
+		nIds[0] === 'resume',
+		`overlay = [${nIds.join()}]`,
+	)
+	check(
+		'armed New round: the destructive answer is second',
+		nIds[1] === 'new',
+		`overlay = [${nIds.join()}]`,
+	)
+}
+
+// ---------- Settings is reachable during the flight animation (§10) ----------
+// §10 wants Settings from BOTH the main menu and the pause menu. It was
+// dropped in flight because there was no route back out of it; the row is
+// worthless if selecting it strands the player, so both halves are checked.
+const settingsInFlightChecks = async () => {
+	const t = makeHarness(BASE_SETTINGS)
+	t.flow.start()
+	for (let i = 0; i < 40 && t.listIds()[t.scanner.focusIndex()] !== 'play'; i++)
+		t.scanner.handle('next')
+	t.scanner.handle('select')
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	t.scanner.handle('select') // first course
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	t.holdFlight(true)
+	for (let i = 0; i < 40 && t.listIds()[t.scanner.focusIndex()] !== 'cube'; i++)
+		t.scanner.handle('next')
+	t.scanner.handle('select')
+	await sleep(INPUT_COOLDOWN_MS + 20)
+	t.flow.onSwitch('menu')
+	const ids = t.overlayIds()
+	check(
+		'Settings is on the pause menu during flight',
+		ids.includes('settings'),
+		`overlay = [${ids.join()}]`,
+	)
+	if (ids.includes('settings')) {
+		t.pickOverlay('settings')
+		check(
+			'picking it actually reaches Settings',
+			t.listIds().includes('tts'),
+			`list = [${t.listIds().join()}]`,
+		)
+		await sleep(INPUT_COOLDOWN_MS + 20)
+		// Back out of Settings: it must land on the paused flight's menu, not on a
+		// screen the flight has already left. A row that strands the player is
+		// worse than no row, which is why the return route is asserted too.
+		if (t.listIds().includes('back')) {
+			t.pickList('back')
+			check(
+				'and Back returns to the paused flight menu, not a dead screen',
+				t.overlayIds().includes('resume'),
+				`overlay = [${t.overlayIds().join()}]`,
+			)
+		} else
+			check('and Back returns to the paused flight menu, not a dead screen', false, 'no Back row')
+	} else {
+		check('picking it actually reaches Settings', false, 'no Settings row to pick')
+		check('and Back returns to the paused flight menu, not a dead screen', false, 'never reached')
+	}
+	t.endFlight()
+}
+
+// ---------- the hold-progress gesture is measurable (§4) ----------
+const holdProgressChecks = async () => {
+	const emitted: string[] = []
+	const m = createSwitchMachine((e) => emitted.push(e), { space: 120, return: 120 }, 0)
+	check('heldFor is 0 before any press', m.heldFor('return') === 0, `${m.heldFor('return')}`)
+	m.down('return')
+	await sleep(60)
+	const mid = m.heldFor('return')
+	check('heldFor grows while the key is down', mid >= 40 && mid < 120, `${mid} ms`)
+	m.up('return')
+	check('heldFor is 0 again after release', m.heldFor('return') === 0, `${m.heldFor('return')}`)
+	check(
+		'the ring appears partway through, not at the first frame',
+		HOLD_SHOW_MS > 0 && HOLD_SHOW_MS < RETURN_HOLD_MS,
+		`show ${HOLD_SHOW_MS} of ${RETURN_HOLD_MS}`,
+	)
+	check(
+		'the beep rises rather than repeating one pitch',
+		HOLD_BEEP_STEP > 0,
+		`step ${HOLD_BEEP_STEP} Hz`,
+	)
+}
+
 const focusOrderChecks = () => {
 	const WPM = 160 // conservative default rate for a system voice
 	// Budgeted against the DEFAULT rung, not the fastest. At the 1 s rung
@@ -1434,6 +1589,9 @@ const main = async () => {
 	castLayerChecks()
 	castNonTextChecks()
 	focusOrderChecks()
+	await confirmShapeChecks()
+	await settingsInFlightChecks()
+	await holdProgressChecks()
 
 	for (const [name, ok, detail] of results) {
 		console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok || !detail ? '' : ` — ${detail}`}`)
@@ -1449,7 +1607,7 @@ const main = async () => {
 	// disappear rather than fail.
 	// Pinning the count is the general fix: any assertion that stops running
 	// takes the suite down with it. Raise this deliberately when adding checks.
-	const EXPECTED_CHECKS = 220
+	const EXPECTED_CHECKS = 237
 	if (results.length !== EXPECTED_CHECKS) {
 		console.log(
 			`menu-check: expected ${EXPECTED_CHECKS} checks, ran ${results.length}. A check that stops running is a check that stopped guarding something; find out which before changing this number.`,

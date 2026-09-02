@@ -133,10 +133,15 @@ export type SwitchEvent =
 	| 'autostart' // space held to threshold → BACKWARD scanning while held
 	| 'autostop' // space released after backward scanning
 
+export type SwitchKey = 'space' | 'return'
+
 export interface SwitchInput {
 	on(cb: (e: SwitchEvent) => void): void
 	start(): void
 	stop(): void
+	/** ms this key has been held, 0 when released. Drives the hold-progress
+	 *  ring and its rising beep (§4). */
+	heldFor(key: SwitchKey): number
 }
 
 // ---------- scanning ----------
@@ -219,6 +224,10 @@ export interface SFX {
 	 *  (0..1, mapped to height). Call every frame while airborne; null stops it.
 	 *  Must be interruption-safe (menu pause, flight end, exit all pass null). */
 	tone(level: number | null): void
+	/** One rising blip for the hold-progress gesture (§4: "a rising beep plays
+	 *  each second so it works with eyes closed"). `step` is the whole second
+	 *  reached, 1 upward. */
+	holdBeep(step: number): void
 	setEnabled(on: boolean): void
 }
 

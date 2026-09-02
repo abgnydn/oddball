@@ -8,6 +8,7 @@
 // musical (pentatonic marimba), bounces carry per-character signatures, and
 // 'holed' stays the game's one beautiful sound.
 
+import { HOLD_BEEP_F0, HOLD_BEEP_STEP } from '../tuning'
 import type { SFX, SfxName, ShapeId } from '../types'
 
 interface ToneOpts {
@@ -462,6 +463,26 @@ export const createSFX = (): SFX => {
 		tone(level: number | null): void {
 			try {
 				flightTone(level)
+			} catch {
+				// never throw — audio is a nicety, not a dependency
+			}
+		},
+		// §4's audible half of the hold gesture: one blip per whole second, each a
+		// step higher, so a player with their eyes shut can hear the hold building
+		// rather than counting in the dark and concluding the switch is dead.
+		holdBeep(step: number): void {
+			try {
+				if (!enabled) return
+				const ok = ensure()
+				if (!ok) return
+				const { a, out } = ok
+				if (a.state === 'suspended') a.resume().catch(() => {})
+				tone(a, out, {
+					freq: HOLD_BEEP_F0 + Math.max(0, step) * HOLD_BEEP_STEP,
+					dur: 0.09,
+					gain: 0.1,
+					type: 'square',
+				})
 			} catch {
 				// never throw — audio is a nicety, not a dependency
 			}
