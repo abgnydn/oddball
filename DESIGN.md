@@ -140,7 +140,7 @@ Count the rows; this sentence is a summary of them and summaries drift.
 
 - DOM UI for all menus and racks (scannable lists); canvas only for the course
   view.
-- Four color themes (`high-contrast` default, `light`, `dark`, `warm`) and
+- Four color themes (`warm` default, `light`, `dark`, `high-contrast`) and
   five text scales (100–200 %).
 - Highlight ring: thick outline, thickness setting thin/medium/thick, gentle
   focus pulse (off under reduce-motion). Its reach outside the row is defined

@@ -488,7 +488,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	ttsVolume: 1,
 	scanMs: 2000, // the hub's shipped default (their shared/scan-manager.js)
 	fontScale: 125,
-	theme: 'high-contrast',
+	theme: 'warm',
 	highlightThick: 'medium',
 	audioCues: true,
 	reduceMotion: false,
