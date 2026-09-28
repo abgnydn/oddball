@@ -1,6 +1,5 @@
 // Every player-facing word lives here. Short sentences,
-// common words, whole yards. The narrator speaks about the cast matter-of-factly
-// — ability first, never pity, never "despite" (CAST.md).
+// common words, whole yards.
 
 import { MAX_CUSTOM_HOLES, MAX_STROKES, SHAPE_ORDER, SHAPES, yd } from '../tuning'
 import type { BallState, HoleSpec, ShapeId, StrikeOutcome, Surface } from '../types'
@@ -36,11 +35,6 @@ export const MENU = {
 	deleteArmed: 'Yes — delete',
 	deleteArmedSpeak: 'Delete this hole for good? Pick this again to be sure.',
 	help: 'How to Play',
-	// NOT 'meet the team'. The page this row opens is titled by the cast setting
-	// (helpPages), and this row was left as a const saying "meet the team" in
-	// both modes — the third ungated cast string found in this file, after
-	// rangeNarrate and HELP_PAGES. It is spoken at every pass of the main menu,
-	// which is the first list a new player scans.
 	helpSpeak: 'How to Play. Learn the game and the shapes.',
 	settings: 'Settings',
 	settingsSpeak: 'Settings. Change the speech, the colors, and more.',
@@ -83,11 +77,8 @@ export const MENU = {
 	exitArmedSpeak: 'Leave this round? Pick this again to be sure.',
 }
 
-/** A function, not a const: the "Meet the team" page reads the cast strings, and
- *  a module-level const evaluates once at import with no way to consult the
- *  player's setting. It shipped as a const and spoke "Brick is deaf" to players
- *  who had the cast layer turned off. */
-export const helpPages = (characters: boolean): Array<{ label: string; speak: string }> => [
+/** The Help pages. The shapes page lists each shape's name and blurb. */
+export const helpPages = (): Array<{ label: string; speak: string }> => [
 	{
 		label: 'What is this game?',
 		speak:
@@ -99,10 +90,8 @@ export const helpPages = (characters: boolean): Array<{ label: string; speak: st
 			'Press Space to move to the next choice. Press Enter to pick it. Hold Space to go backwards. Hold Enter to open the menu. While you are playing, there is a Menu choice at the end of the shape list too. There is also a Pause button on the screen, which needs a mouse or a finger. In Settings you can turn on Auto scan, so the light moves by itself.',
 	},
 	{
-		label: characters ? 'Meet the team' : 'The shapes',
-		speak: SHAPE_ORDER.map(
-			(id) => `${shapeName(id, characters)}. ${shapeBlurb(id, characters)}`,
-		).join(' '),
+		label: 'The shapes',
+		speak: SHAPE_ORDER.map((id) => `${shapeName(id)}. ${shapeBlurb(id)}`).join(' '),
 	},
 	{
 		label: 'Scoring',
@@ -141,7 +130,7 @@ export const whereAmI = (
 	return `Hole ${index + 1}, ${hole.name}. ${remaining} to the cup. You are on the ${lieWord(ball.lie)}. ${hole.windText} ${shots}`
 }
 
-/** Distance FIRST, character second. §9 warns that a focus label "is read aloud
+/** Distance FIRST, blurb second. §9 warns that a focus label "is read aloud
  *  at every scan step, and at a 1 s scan speed a long label becomes a drone",
  *  and these run 4-10 s. Per-item labels deliberately do not hold the scan
  *  timer, so at the default 2 s an auto-scanning player hears only the opening
@@ -154,56 +143,27 @@ const numWord = (n: number): string =>
 	['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] ??
 	String(n)
 
-/** The cast layer is a setting, off by default (Settings.characters). With it
- *  off a shape is described by what it does and nothing else; with it on the
- *  same shape has a name and a voice. Every spoken line that mentions a shape
- *  goes through here, so the two modes can never half-apply — a plain blurb
- *  under a character name would read as a bug, not a style. */
-export const shapeName = (id: ShapeId, characters: boolean): string =>
-	characters ? SHAPES[id].name : SHAPES[id].plainName
+/** Every spoken line that mentions a shape goes through here. */
+export const shapeName = (id: ShapeId): string => SHAPES[id].name
 
-export const shapeBlurb = (id: ShapeId, characters: boolean): string =>
-	characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb
+export const shapeBlurb = (id: ShapeId): string => SHAPES[id].blurb
 
-export const shapeFocus = (id: ShapeId, reachM: number, characters: boolean): string =>
-	`${shapeName(id, characters)}. Goes about ${yd(reachM)} yards. ${shapeBlurb(id, characters)}`
+export const shapeFocus = (id: ShapeId, reachM: number): string =>
+	`${shapeName(id)}. Goes about ${yd(reachM)} yards. ${shapeBlurb(id)}`
 
-export const shapeConfirm = (id: ShapeId, characters: boolean): string =>
-	`${shapeName(id, characters)}. Here comes the swing!`
+export const shapeConfirm = (id: ShapeId): string => `${shapeName(id)}. Here comes the swing!`
 
-/** Character-flavored hole-out lines (CAST.md). Only spoken when characters
- *  are on; otherwise the hole-out line ends after "In the cup!". */
-const HOLED_FLAVOR: Record<ShapeId, string> = {
-	sphere: 'Dot heard the beeper the whole way.',
-	cube: 'Brick is very pleased.',
-	disc: 'Glide takes a bow.',
-	egg: 'The egg is as surprised as you are.',
-	star: 'Boing bounces with joy.',
-	// "That means yes." was the narrator interpreting a one-bit output for the
-	// hearing player. The clause about a tap being sufficient communication was
-	// cut from Penny's blurb for that reason; the same reasoning applies here.
-	pancake: 'Penny taps once.',
-}
-
-export const narrate = (
-	out: StrikeOutcome,
-	id: ShapeId,
-	hole: HoleSpec,
-	characters: boolean,
-): string => {
-	const name = shapeName(id, characters)
+export const narrate = (out: StrikeOutcome, id: ShapeId, hole: HoleSpec): string => {
+	const name = shapeName(id)
 	if (out.water)
 		return `Splash! ${name} landed in the water. The ball goes back to where it was. The shot still counts.`
-	if (out.holed) return characters ? `In the cup! ${HOLED_FLAVOR[id]}` : 'In the cup!'
+	if (out.holed) return 'In the cup!'
 	const remainingYd = yd(Math.abs(hole.cupX - out.end.x))
 	const remaining = yds(remainingYd)
 	const bounces = out.events.filter((e) => e.kind === 'bounce').length
 	let color = ''
 	if (out.end.lie === 'sand') color = `${name} landed in the sand. `
-	else if (bounces >= 3)
-		// "Boing!" belongs to the star character — neutral wording for everyone
-		// else, and for everyone when the cast layer is off
-		color = characters && id === 'star' ? `Boing! ${bounces} bounces! ` : `Bounce, bounce, bounce! `
+	else if (bounces >= 3) color = `Bounce, bounce, bounce! `
 	else if (out.total - out.carry < 2 && out.total > 20)
 		color = `${name} landed and stayed right there. `
 	const close = remainingYd <= 10 ? ' So close!' : ''
@@ -222,9 +182,7 @@ export const scoreLine = (strokes: number, par: number): string => {
 }
 
 // Not "the ball takes a rest": §1 says the player "is not a child, and should
-// not be talked to like one", and a euphemism for the stroke cap is the clearest
-// place this build was doing that. It ships in both cast modes, which is why the
-// §1 departures row scoping the question to the cast layer was too narrow.
+// not be talked to like one".
 // No "On to the next hole." — it is false in three shipped cases: in two-player
 // the next turn is the SAME hole, on the last hole a summary follows, and a
 // custom round has one hole. `playerTurn`, `nextHole` and `summary` each say
@@ -276,12 +234,11 @@ export const summaryLine2 = (t1: number, t2: number): string => {
 
 export const BEST_LINE = 'That is your best round here!'
 
-export const rangeNarrate = (out: StrikeOutcome, id: ShapeId, characters: boolean): string => {
-	const name = shapeName(id, characters)
+export const rangeNarrate = (out: StrikeOutcome, id: ShapeId): string => {
+	const name = shapeName(id)
 	const bounces = out.events.filter((e) => e.kind === 'bounce').length
 	let color = ''
-	if (bounces >= 3)
-		color = characters && id === 'star' ? `Boing! ${bounces} bounces! ` : 'Bounce, bounce, bounce! '
+	if (bounces >= 3) color = 'Bounce, bounce, bounce! '
 	else if (out.total - out.carry < 2 && out.total > 20)
 		color = `${name} landed and stayed right there. `
 	return `${color}${name} went ${yd(out.total)} yards! Pick a shape and go again.`
@@ -319,7 +276,6 @@ export const SETTINGS_LABELS = {
 	motion: 'Animations',
 	tone: 'Flying sound',
 	dwell: 'Hover to pick',
-	characters: 'Character names',
 }
 
 export const settingValueSpeak: Record<string, (v: string) => string> = {
@@ -344,8 +300,4 @@ export const settingValueSpeak: Record<string, (v: string) => string> = {
 		v === 'off'
 			? `Hover to pick: ${v}. Pointing at a button does not choose it.`
 			: `Hover to pick: ${v}. Point at a button and hold still to choose it.`,
-	characters: (v) =>
-		v.startsWith('on')
-			? `Character names ${v}. Each shape has a name and a story.`
-			: `Character names ${v}. Each shape is named for what it is.`,
 }

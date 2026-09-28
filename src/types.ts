@@ -9,8 +9,6 @@ export interface ShapeSpec {
 	id: ShapeId
 	name: string // spoken + shown name ("Ball", "Cube", ...)
 	blurb: string // spoken on focus: what it does, in short common words
-	plainName: string // same shape without the cast persona ("The cube")
-	plainBlurb: string // same facts, no character voice; used when characters=off
 	maxCarry: number // m — cap on the carry the golfer can get with this shape
 	launchDeg: number // launch angle above horizontal
 	drag: number // quadratic drag coefficient (1/m), applied to airspeed
@@ -20,8 +18,8 @@ export interface ShapeSpec {
 	restitution: number // bounce energy retention 0..1
 	bounceJitter: number // radians — random perturbation of bounce angle
 	rollMult: number // scales rollout distance after bounces settle
-	/** Dot (CAST.md): when her roll would stop within `radius` m of the cup, she
-	 *  listens and rolls up to `pull` m closer. An edge, never an aimbot. */
+	/** Close-range rollout assist: when the roll would stop within `radius` m
+	 *  of the cup, it rolls up to `pull` m closer. An edge, never an aimbot. */
 	homing?: { radius: number; pull: number }
 }
 
@@ -210,13 +208,13 @@ export type SfxName =
 	| 'focus' // highlight lands on an item — pitch walks a pentatonic scale by opts.index
 	| 'select'
 	| 'swing'
-	| 'bounce' // strength via opts.strength; character signature via opts.shape
+	| 'bounce' // strength via opts.strength; shape signature via opts.shape
 	| 'splash'
 	| 'roll'
 	| 'holed' // the plonk + one piano note
 	| 'menu'
 	| 'beep' // the cup beeper — caller sets the rate by calling it more often
-	| 'tap' // Penny's single tap for yes
+	| 'tap' // pancake's signature tap on hole-out
 
 export interface SFX {
 	play(name: SfxName, opts?: { strength?: number; index?: number; shape?: ShapeId }): void
@@ -284,9 +282,6 @@ export interface Settings {
 	/** Single-switch mode: the highlight advances by itself at scanMs, so the
 	 *  player only ever presses Enter (the hub's one-switch scheme). */
 	autoScan: boolean
-	/** Cast layer (CAST.md): shapes get names and a voice. Off by default —
-	 *  a first-time player hears what the shape DOES before who it is. */
-	characters: boolean
 }
 
 export interface RoundSave {

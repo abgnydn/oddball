@@ -66,19 +66,18 @@ this file cites "their games" it means those files, not the library.
 
 | `ACCESSIBILITY.md` says | This build |
 | --- | --- |
-| §1: the player "is not a child, and should not be talked to like one" | the cast layer (CAST.md) writes the shapes as characters with feelings. Whether that reads as warmth or as talking down is not this build's call to make for a player it has never met, so it is a **setting, off by default**; the shipped reading names the shape for what it is and describes what it does |
 | §1: give the player "a way to choose how hard the game pushes back" | no difficulty setting. One-player golf has no fail state (eight strokes end the hole); the practice range is unscored. Neither is a difficulty the player chose. Not done |
 | §4: `scan-manager.js` enforces the 250 ms cooldown — "you should not" write your own | its own 250 ms cooldowns: there is no `NarbeScanManager` in a standalone build to defer to |
 | §4: ~3 s to scan backwards, **~5 s to pause**, "and new games should match it" | 3 s for both. The backward hold matches; the pause hold is deliberately shorter. (BENNYSMINIGOLF itself uses 6 s, undocumented in their §12 — not reported to them yet) |
 | §5: use `SafeAudio`, never the Web Audio API | WebAudio throughout — see the §10 table row for the full position |
 | §5/§10: TTS via `NarbeVoiceManager`, "never keep your own copy" | raw `speechSynthesis` with its own on/off, rate and volume settings |
 | §7: Settings has a **Voice** row cycling available voices | no voice picker. The rows here are "Text to speech", "Speech speed", "Speech volume" — §7's reserved word is not reused |
-| §7: canonical Settings row order | Scan speed sits before Auto scan; game-specific rows sit after both; Character names sits with the speech rows because it changes what speech says |
+| §7: canonical Settings row order | Scan speed sits before Auto scan; game-specific rows sit after both |
 | §5: `ios-audio-fix.js` unlocks WebAudio **and speechSynthesis** on first touch | the WebAudio half is handled (lazy context + resume); nothing unlocks speechSynthesis, so the first utterance on iOS may be silent |
 | §9: "large targets (**≥ 64 px** on tablet)" | **not met on small screens.** The Pause button tracks the text setting: 44.6 px at the shipped 125 % default, first clearing 64 px at 200 % — and on viewports ≤ 560 px tall it is capped at a flat 44 px at every scale. Scan rows keep a 64 px floor only above 700 px of height and 560 px of width; short or narrow screens drop them to 56 px, then 44 px. Each cap exists because the full-size control pushed itself or the footer off a short screen — a target you cannot reach at all is worse than an undersized one — but they are departures, not compliance. `pnpm layout-check` measures all of it on every build |
 | §12: pause must be "something you can *scan to and select*" — a hold-only pause is "a locked door" | met: a scannable **Menu** row sits at the end of both gameplay lists, and during the flight animation — where there is no list — a single Enter press opens the menu. The animation hides the list for 3.45-7.95 s (0.45 s pre-roll + a 3-6 s flight + 1.5 s afterglow on a hole-out), or 3.45-6.45 s with Animations off since the afterglow is skipped; turning Animations off removes the animated flight entirely. §12 also prices a scannable row — every pass costs a stop — so the Menu row is placed last, after the shapes, where it does not sit between the player and the shot |
 | §5: `tutorial-modal.js` provides the shared how-to-play modal | not used and not reimplemented as a modal. How to Play is a scannable Help screen in the same list grammar as everything else |
-| §9: focus labels must be short — at a 1 s scan speed "a long label becomes a drone" | shape labels run ~4-10 s spoken, and focus labels deliberately do not hold the scan timer, so at short rungs the tail is not heard. Mitigated: the yardage the shot turns on comes first (~1.9 s, inside the 2 s default) and the character blurb — skippable without cost — comes after. `menu-check` asserts that order. At the 1 s rung nothing useful fits, and wording cannot solve that |
+| §9: focus labels must be short — at a 1 s scan speed "a long label becomes a drone" | shape labels run ~4-10 s spoken, and focus labels deliberately do not hold the scan   timer, so at short rungs the tail is not heard. Mitigated: the yardage the shot turns on comes first (~1.9 s, inside the 2 s default) and the shape blurb — skippable without cost — comes after. `menu-check` asserts that order. At the 1 s rung nothing useful fits, and wording cannot solve that |
 
 ### §10, the shipping checklist, item by item
 
@@ -107,7 +106,7 @@ Count the rows; this sentence is a summary of them and summaries drift.
 | Anything mouse-only or off-site sits behind a spoken confirm dialog, "with Cancel first in the scan order and the scan trapped in the dialog" | met, though the trigger does not arise — nothing here is mouse-only and nothing leaves the page. The shape is followed anyway by the three two-step confirms: armed, each becomes a two-row dialog with the cancel answer first and focus starting on it. `menu-check` asserts the order, the trapping and the opening focus |
 | Progress saves and resumes | met. `layout-check` resumes a seeded round through Continue on every run, which exercises the path without being a test of it |
 | Readable at 100 % on a tablet | met, by eye on a 768x1024 viewport. `layout-check` establishes only that nothing is clipped or overflowing there; it does not measure type size, contrast or legibility |
-| Added to `apps/games/games.json` with a thumbnail and genres | **not met.** Not submitted. That waits on the CAST.md review |
+| Added to `apps/games/games.json` with a thumbnail and genres | **not met.** Not submitted |
 | **Played start to finish with one switch, by someone who is not you** | **not met.** §10 calls this "the only test that actually counts" |
 
 ## TTS
@@ -117,15 +116,11 @@ Count the rows; this sentence is a summary of them and summaries drift.
   behind it.
 - Everything spoken is also shown as a large-print caption, and `console.log`-ed
   as `[tts] <text>` for automated verification.
-- Settings: TTS on/off, rate, volume, and **Character names** — the cast layer
-  (CAST.md), off by default. With it off, every spoken line uses the shape's
-  plain name and plain blurb, the hole-out line ends at "In the cup!", the Help
-  page's shapes entry is titled "The shapes", and Penny's tap sound and
-  tap-bounce are gated too (via a `data-characters` attribute). Every spoken
-  line that names a shape routes through `shapeName()`/`shapeBlurb()`, and
-  `menu-check` greps every file under `src/` for a reader that skips the
-  setting — a leak fails the suite. The ball's face is deliberately NOT gated:
-  it is the game's art, not a character's name; nothing enforces that boundary,
+- Settings: TTS on/off, rate, volume. Every spoken line that names a shape
+  routes through `shapeName()`/`shapeBlurb()`. The hole-out line is always
+  "In the cup!", the Help page's shapes entry is titled "The shapes", and the
+  pancake's tap sound and tap-bounce play on its hole-outs as its shape
+  signature. The ball's face is the game's art; nothing enforces that boundary,
   so it is recorded here.
 - All text lives in `src/game/lines.ts`: short sentences, common words, whole
   yards. No hold threshold is quoted to the player (§4). Scores are reported
@@ -233,7 +228,7 @@ Seven harnesses in `tools/`, run headless. They are the safety net: tune
 
 - `pnpm calibrate` — per-shape distance/dispersion vs bands declared in tuning;
   asserts every shape identity (cube stops dead, disc's wind swing ≫ sphere's,
-  Dot's homing helps but is bounded, …).
+  the ball's rollout assist helps but is bounded, …).
 - `pnpm holes` — plays every course over many seeds with the intended strategy
   and every single-shape strategy. Asserts completability (≤ 8 strokes on ≥
   95 % of seeds), no single-shape dominance, every purposeful shape in some
@@ -249,17 +244,15 @@ Seven harnesses in `tools/`, run headless. They are the safety net: tune
   arm, bounce-guard, and take the cancel-first two-row shape; Auto Scan wraps
   without a silent step and waits for narration; Settings is reachable during
   flight and Back returns; the hold-progress constants are sane; a shape's
-  yardage is spoken before its blurb inside the default scan interval in both
-  cast modes; and the cast layer is all-or-nothing — including a source-level
-  grep of every file under `src/` for ungated readers, which does not depend on
-  anyone remembering a call site. It pins its own check count, so an assertion
+  yardage is spoken before its blurb inside the default scan interval.
+  It pins its own check count, so an assertion
   that silently stops running fails the suite.
 - `pnpm layout-check` — serves `dist/` and drives the real bundle in headless
   Chromium across every text scale and a viewport grid from 1920x1080 down to
   280x480, over ten screens reached by real click paths. For every row it
   measures clipping against the scrollport, the highlight ring's own edges, the
   Pause button's reachability, and document overflow in both directions. Four
-  focused passes cover the thick ring, character names, every breakpoint at N
+  focused passes cover the thick ring, shape labels, every breakpoint at N
   and N+1, and the shipped motion default. Before the sweep it self-tests: it
   plants a clipped row, an overflowing row, a cut ring and an out-of-viewport
   Pause button, and exits non-zero if any detector fails to fire — a detector
@@ -282,9 +275,6 @@ Seven harnesses in `tools/`, run headless. They are the safety net: tune
   after a hold, hover-to-pick, and the `aria-hidden` targets — restoring
   `aria-hidden` on `main` would hide the pause menu from every screen reader
   with the whole suite green.
-- **The cast checks match strings.** A leak that is not a string — a sound, an
-  animation — is invisible to them; Penny's tap is gated and checked
-  separately because exactly that happened.
 - **Passing is not the same as applying**: `layout-check` measures outcomes, so
   a CSS rule that never applies still passes.
 - **No harness plays the game without looking at the screen**, and nobody has.

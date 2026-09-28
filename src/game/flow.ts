@@ -269,7 +269,7 @@ export function createFlow(deps: Deps): Flow {
 		if (goBack) helpGoBack = goBack
 		hud.setScreen('How to Play')
 		hud.setMode('Help')
-		const pages = L.helpPages(settings.characters)
+		const pages = L.helpPages()
 		const specs: HudItemSpec[] = pages.map((p, i) => ({
 			id: `page-${i}`,
 			label: p.label,
@@ -341,14 +341,6 @@ export function createFlow(deps: Deps): Flow {
 				value: () => (settings.ttsVolume < 1 ? 'soft' : 'full'),
 				cycle: () => {
 					settings = { ...settings, ttsVolume: settings.ttsVolume < 1 ? 1 : 0.5 }
-				},
-			},
-			{
-				id: 'characters',
-				label: L.SETTINGS_LABELS.characters,
-				value: () => (settings.characters ? 'on' : 'off'),
-				cycle: () => {
-					settings = { ...settings, characters: !settings.characters }
 				},
 			},
 			{
@@ -697,10 +689,10 @@ export function createFlow(deps: Deps): Flow {
 			{ id: 'back', label: L.MENU.back, speak: L.MENU.backSpeak },
 			...SHAPE_ORDER.map((id) => ({
 				id,
-				label: L.shapeName(id, settings.characters),
-				speak: L.shapeFocus(id, reach(id), settings.characters),
+				label: L.shapeName(id),
+				speak: L.shapeFocus(id, reach(id)),
 				glyph: id,
-				detail: L.shapeBlurb(id, settings.characters),
+				detail: L.shapeBlurb(id),
 			})),
 			// The range is gameplay, so §12's scannable pause applies here too.
 			// It was in the round rack only, which made the "no screen needs a
@@ -737,7 +729,7 @@ export function createFlow(deps: Deps): Flow {
 		scanner.clear()
 		hud.showPanel(false)
 		hud.setMode('Watch!')
-		tts.speak(L.shapeConfirm(id, settings.characters))
+		tts.speak(L.shapeConfirm(id))
 		sfx.play('swing')
 		rangeRng = (rangeRng + 1) | 0
 		const rng = mulberry32((Date.now() ^ (rangeRng * 2654435761)) >>> 0)
@@ -759,7 +751,7 @@ export function createFlow(deps: Deps): Flow {
 				if (token !== flightToken) return
 				lastTrail = out.points
 				lastShape = id
-				range(L.rangeNarrate(out, id, settings.characters))
+				range(L.rangeNarrate(out, id))
 			},
 		})
 	}
@@ -829,10 +821,10 @@ export function createFlow(deps: Deps): Flow {
 			{ id: 'where', label: L.MENU.whereAmI, speak: L.MENU.whereAmISpeak },
 			...SHAPE_ORDER.map((id) => ({
 				id,
-				label: L.shapeName(id, settings.characters),
-				speak: L.shapeFocus(id, reach(id), settings.characters),
+				label: L.shapeName(id),
+				speak: L.shapeFocus(id, reach(id)),
 				glyph: id,
-				detail: L.shapeBlurb(id, settings.characters),
+				detail: L.shapeBlurb(id),
 			})),
 			// A scannable route to the menu. Holding Enter also opens it, but a
 			// player who cannot sustain a 3 s hold would otherwise have no way to
@@ -909,7 +901,7 @@ export function createFlow(deps: Deps): Flow {
 		hud.showPanel(false)
 		hud.setMode('Watch!')
 		hud.footerFocus('')
-		tts.speak(L.shapeConfirm(id, settings.characters))
+		tts.speak(L.shapeConfirm(id))
 		sfx.play('swing')
 		const rng = mulberry32(round.seed + round.player * 500 + round.holeIdx * 1000 + strokeNo)
 		const out = sim.strike(hole, round.ball, id, rng)
@@ -926,9 +918,8 @@ export function createFlow(deps: Deps): Flow {
 				else if (e.kind === 'splash') sfx.play('splash')
 				else if (e.kind === 'land') sfx.play('roll')
 				else if (e.kind === 'holed') {
-					// Penny's tap is a character's cheer (CAST.md), so it follows the
-					// cast setting. It used to fire unconditionally.
-					if (id === 'pancake' && settings.characters) sfx.play('tap')
+					// The pancake's tap is its shape signature, always on.
+					if (id === 'pancake') sfx.play('tap')
 					sfx.play('holed')
 				}
 			},
@@ -964,16 +955,14 @@ export function createFlow(deps: Deps): Flow {
 		persist()
 		const strokes = curStrokes()
 		if (out.holed) {
-			endHoleForPlayer(
-				`${L.narrate(out, id, hole, settings.characters)} ${L.scoreLine(strokes, hole.par)}`,
-			)
+			endHoleForPlayer(`${L.narrate(out, id, hole)} ${L.scoreLine(strokes, hole.par)}`)
 			return
 		}
 		if (strokes >= MAX_STROKES) {
-			endHoleForPlayer(`${L.narrate(out, id, hole, settings.characters)} ${L.REST_LINE}`)
+			endHoleForPlayer(`${L.narrate(out, id, hole)} ${L.REST_LINE}`)
 			return
 		}
-		rack(L.narrate(out, id, hole, settings.characters))
+		rack(L.narrate(out, id, hole))
 	}
 
 	/** The current player finished the hole (holed or rested). In 2P the other

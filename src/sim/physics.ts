@@ -34,7 +34,7 @@ const CUP_CAPTURE_SPEED = 3.5 // rolling faster than this lips out
 const REST_SPEED = 0.25
 const TANGENT_KEEP = 0.72 // tangential speed kept through a bounce
 const TINY_BOUNCE = 1.2 // normal speed below this = start rolling
-const HOMING_SPEED = 1.4 // Dot's listen-roll speed
+const HOMING_SPEED = 1.4 // rollout-assist speed
 const MAX_SIM_T = 40
 const NEUTRAL_RNG: Rng = () => 0.5
 
@@ -81,7 +81,7 @@ interface SimOpts {
 	rng: Rng
 	wind: number // m/s, 0 in aim mode
 	waterIsGround: boolean // aim mode pretends water is fairway
-	capture: boolean // aim mode disables cup capture + homing so the aim search
+	capture: boolean // aim mode disables cup capture + rollout assist so the aim search
 	// converges on the cup CENTER, not the nearest edge of the capture window
 }
 
@@ -258,7 +258,7 @@ function simulate(
 						Math.abs(toCup) <= h.radius &&
 						(rollSurf === 'green' || rollSurf === 'fairway')
 					) {
-						// Dot listens for the beeper and rolls up to `pull` m closer.
+						// Close-range rollout assist: roll up to `pull` m closer.
 						homingDone = true
 						const dirH = Math.sign(toCup)
 						const travel = Math.min(h.pull, Math.abs(toCup) - GIMME_M * 0.5)

@@ -40,7 +40,6 @@ import type {
 	ScanItem,
 	Settings,
 	SFX,
-	StrikeOutcome,
 } from '../src/types'
 import type { Hud, HudItemSpec } from '../src/ui/hud'
 
@@ -48,7 +47,6 @@ let failures = 0
 // The bundle runs from node_modules/.cache; pnpm runs a script with the
 // package root as cwd, so that is the only reliable anchor.
 const REPO_ROOT = process.cwd()
-const SRC = join(REPO_ROOT, 'src')
 
 const results: Array<[string, boolean, string]> = []
 const check = (name: string, ok: boolean, detail = '') => {
@@ -70,7 +68,6 @@ const BASE_SETTINGS: Settings = {
 	flightTone: false,
 	dwell: 'off',
 	autoScan: false,
-	characters: false, // the shipped default; the cast layer is opt-in
 }
 
 // ---------- fakes for the DOM-facing collaborators only ----------
@@ -145,8 +142,8 @@ const makeHarness = (settings: Settings, customHoles?: CustomHole[]) => {
 		setTheme() {},
 	}
 
-	// Recording, not silent: Penny's tap is a cast element delivered as a SOUND,
-	// so the only way to assert it follows the setting is to watch what plays.
+	// Recording, not silent: the pancake's tap is a sound, so the check watches
+	// what plays.
 	// Set by a test that needs the flight to stay open; `pendingDone` resolves it.
 	let clearedAll = false
 	let holdFlight = false
@@ -606,7 +603,6 @@ const settingsSpeechChecks = () => {
 		['auto', 'on — one switch', 'off — two switches', 'light moves by itself'],
 		['tone', 'on', 'off', 'sings higher'],
 		['dwell', 'slow', 'off', 'hold still to choose'],
-		['characters', 'on', 'off', 'a name and a story'],
 	]
 	for (const [id, onV, offV, onlyWhenOn] of cases) {
 		const on = say(id, onV)
@@ -748,7 +744,7 @@ const pointerBounceChecks = async () => {
 // a long label becomes a drone". These labels run 4-10 s and do NOT hold the
 // scan timer, so whatever comes after the first couple of seconds is not heard
 // by an auto-scanning player. The yardage decides the shot, so it has to be in
-// that window; the character blurb does not and can be cut off.
+// that window; the shape blurb does not and can be cut off.
 // ---------- confirm dialogs take §10's shape ----------
 // §10: a confirm sits behind "Cancel first in the scan order and the scan
 // trapped in the dialog". These confirms used to leave the whole menu on
@@ -907,26 +903,21 @@ const focusOrderChecks = () => {
 	// the impossible would just get the assertion weakened later. DESIGN.md
 	// discloses the 1 s case in the departures table instead.
 	const budgetWords = (DEFAULT_SETTINGS.scanMs / 1000 / 60) * WPM
-	// Both cast modes, because the plain names are LONGER than the character
-	// names ("The pancake" vs "Penny") and the default mode is the plain one.
-	for (const characters of [false, true]) {
-		const mode = characters ? 'characters on' : 'characters off'
-		for (const id of SHAPE_ORDER) {
-			const line = L.shapeFocus(id, 150, characters)
-			const blurb = characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb
-			const end = line.indexOf('yards.')
-			check(
-				`${id} (${mode}): the yardage is spoken before the blurb`,
-				end !== -1 && end < line.indexOf(blurb),
-				line,
-			)
-			const words = line.slice(0, end + 6).split(/\s+/).length
-			check(
-				`${id} (${mode}): the yardage fits the default scan rung`,
-				words <= budgetWords,
-				`${words} words vs ~${budgetWords.toFixed(1)} at ${DEFAULT_SETTINGS.scanMs}ms/${WPM}wpm`,
-			)
-		}
+	for (const id of SHAPE_ORDER) {
+		const line = L.shapeFocus(id, 150)
+		const blurb = SHAPES[id].blurb
+		const end = line.indexOf('yards.')
+		check(
+			`${id}: the yardage is spoken before the blurb`,
+			end !== -1 && end < line.indexOf(blurb),
+			line,
+		)
+		const words = line.slice(0, end + 6).split(/\s+/).length
+		check(
+			`${id}: the yardage fits the default scan rung`,
+			words <= budgetWords,
+			`${words} words vs ~${budgetWords.toFixed(1)} at ${DEFAULT_SETTINGS.scanMs}ms/${WPM}wpm`,
+		)
 	}
 }
 
@@ -996,7 +987,7 @@ const forwardPromiseChecks = () => {
 	// Lines spoken at a point where what comes next depends on state.
 	const stateDependent: Array<[string, string]> = [
 		['REST_LINE', L.REST_LINE],
-		['the Scoring help page', L.helpPages(false)[3]?.speak ?? ''],
+		['the Scoring help page', L.helpPages()[3]?.speak ?? ''],
 		['scoreLine', L.scoreLine(4, 3)],
 		['summaryLine', L.summaryLine([3, 4], [3, 3])],
 		['summaryLine2', L.summaryLine2(3, 4)],
@@ -1124,12 +1115,10 @@ const resetProgressChecks = async () => {
 
 // A GFM table ends at the first blank line. Inserting a paragraph between two
 // rows silently drops every row after it — they render as literal pipe text.
-// That shipped in CAST.md: half the cast table, in the file the README points
-// at, on the page that argues the layer was written carefully. Nobody read the
-// rendered output, because nothing rendered it.
+// Nobody read the rendered output, because nothing rendered it.
 const markdownChecks = () => {
 	const docs = readdirSync(REPO_ROOT).filter((f) => f.endsWith('.md'))
-	check('there are markdown documents to check', docs.length >= 3, docs.join(', '))
+	check('there are markdown documents to check', docs.length >= 2, docs.join(', '))
 	// ...and at least one of them must actually contain a table, or every
 	// per-file assertion below is vacuously true. README has none.
 	const withTables = docs.filter((d) =>
@@ -1138,8 +1127,8 @@ const markdownChecks = () => {
 			.some((l) => l.trimStart().startsWith('|')),
 	)
 	check(
-		'at least two documents contain tables to check',
-		withTables.length >= 2,
+		'at least one document contains tables to check',
+		withTables.length >= 1,
 		withTables.join(', '),
 	)
 	for (const doc of docs) {
@@ -1242,325 +1231,7 @@ const checklistTallyChecks = () => {
 	}
 }
 
-// CAST.md reprints all six blurbs verbatim, and a hand-copied string is a
-// string that drifts. Every round so far a lens has had to check these by hand;
-// this makes the file hold itself to the code.
-const HOLED_FLAVOR_TEXT: Partial<Record<string, string>> = Object.fromEntries(
-	SHAPE_ORDER.map((id) => {
-		const holed: StrikeOutcome = {
-			points: [],
-			events: [],
-			end: { x: 100, lie: 'green' },
-			holed: true,
-			water: false,
-			carry: 100,
-			total: 100,
-		}
-		const line = L.narrate(holed, id, COURSES[0]?.holes[0] as HoleSpec, true)
-		return [id, line.replace(/^In the cup!\s*/, '')]
-	}),
-)
-
-const castDocQuoteChecks = () => {
-	const doc = readFileSync(join(REPO_ROOT, 'CAST.md'), 'utf8')
-	const section = doc.split('## Rack blurbs')[1]?.split('\n## ')[0] ?? ''
-	const quoted = [...section.matchAll(/^- \w+: "(.+)"$/gm)].map((m) => m[1] as string)
-	check('CAST.md reprints all six blurbs', quoted.length === SHAPE_ORDER.length, `${quoted.length}`)
-
-	// The WHOLE file, not just the blurb list. The narrator's hole-out line was
-	// quoted in "Narration rules" with a clause the code had dropped — the third
-	// time that exact sentence came back, and the section check could not see it
-	// because it was scoped to "## Rack blurbs". Any quoted string in CAST.md
-	// that starts like a shipped cup line must BE the shipped cup line.
-	const allQuotes = [...doc.matchAll(/"([^"\n]{12,})"/g)].map((m) => m[1] as string)
-	// One assertion per shape, ALWAYS. The previous version only fired when a
-	// quote shared 15+ characters and half the shipped line — so growing the
-	// shipped line dropped the assertion instead of failing it, and a reviewer
-	// put a narrator gloss back into Penny's cup line with the suite green at
-	// 190/190. A check that can decline to run is not a check.
-	//
-	// The rule is narrow on purpose: CAST.md must contain no quote that EXTENDS
-	// a shipped cup line. That is exactly the drift that happened twice — "Penny
-	// taps once." became "Penny taps once. That means yes." — and it does not
-	// fire on "Brick is deaf", which is a fragment of a blurb rather than an
-	// extension of a cup line.
-	for (const id of SHAPE_ORDER) {
-		const shipped = HOLED_FLAVOR_TEXT[id] ?? ''
-		// BOTH directions. The doc growing past the code is one drift; the code
-		// growing past the doc is the other, and it is the one that actually
-		// happened — a reviewer lengthened HOLED_FLAVOR and CAST.md's shorter
-		// quote stopped matching while the first version of this rule, which
-		// only looked for a longer quote, stayed green.
-		const drifted = allQuotes.filter(
-			(q) =>
-				q !== shipped && (q.startsWith(shipped.slice(0, -1)) || shipped.startsWith(q.slice(0, -1))),
-		)
-		check(
-			`CAST.md's quote of ${id}'s cup line matches the code`,
-			shipped !== '' && drifted.length === 0,
-			`${drifted.join(' | ')} (shipped: ${shipped})`,
-		)
-	}
-	for (const id of SHAPE_ORDER) {
-		check(
-			`${id}: CAST.md's blurb is byte-identical to tuning.ts`,
-			quoted.includes(SHAPES[id].blurb),
-			SHAPES[id].blurb,
-		)
-	}
-}
-
-// ---------- 5a2. no ungated reader of a cast string ----------
-
-// This one reads the SOURCE, not the behaviour, and it exists because the
-// behavioural checks below could not have caught what they were written for.
-// The cast setting shipped with two ungated readers — `rangeNarrate` (the
-// practice range, the mode most likely to be a first screen) and a
-// module-level `HELP_PAGES` const that spoke "Brick is deaf" to players who
-// had the layer off. Both were invisible here because a behavioural check can
-// only test the call sites its author remembered, and the whole failure was
-// forgetting two. A grep cannot forget.
-//
-// The rule: `.name` and `.blurb` on a SHAPES entry are the cast strings, and
-// the ONLY code allowed to read them is the two accessors that take the
-// setting. Anything else must go through shapeName()/shapeBlurb(). Adding a
-// reader is fine — gate it, or add it to ALLOWED deliberately and say why.
-const castSourceChecks = () => {
-	const ALLOWED = new Set([
-		'characters ? SHAPES[id].name : SHAPES[id].plainName',
-		'characters ? SHAPES[id].blurb : SHAPES[id].plainBlurb',
-	])
-	// EVERY .ts under src/, walked recursively. It used to be src/game/*.ts plus
-	// two files, while three documents said it greps "src/" — so render/draw.ts,
-	// which already draws each shape's glyph and is the obvious home for a
-	// painted label, was outside it. The argument for this check is that a grep
-	// cannot forget; a hand-listed subset can.
-	const walk = (dir: string): string[] =>
-		readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-			e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith('.ts') ? [join(dir, e.name)] : [],
-		)
-	const files = walk(SRC)
-	const leaks: string[] = []
-	for (const file of files) {
-		const lines = readFileSync(file, 'utf8').split('\n')
-		lines.forEach((line, i) => {
-			// both access syntaxes: SHAPES[id].name and SHAPES.sphere.name.
-			// The first version of this check only had the bracket form, which
-			// is exactly how the HELP_PAGES leak survived a grep.
-			if (!/SHAPES(\[[^\]]+\]|\.\w+)\.(name|blurb)\b/.test(line)) return
-			if ([...ALLOWED].some((a) => line.includes(a))) return
-			leaks.push(`${file.replace(SRC, 'src')}:${i + 1}: ${line.trim()}`)
-		})
-	}
-	check(
-		'no code outside shapeName()/shapeBlurb() reads a cast string',
-		leaks.length === 0,
-		leaks.join(' | '),
-	)
-	check(
-		'the source check actually walked the whole tree',
-		files.length >= 12 &&
-			files.some((f) => f.includes('render/')) &&
-			files.some((f) => f.includes('input/')),
-		`${files.length} files scanned`,
-	)
-
-	// Reading a cast string is not the only way to speak one. The third and
-	// fourth leaks found in this file were literals: a menu row that said
-	// "meet the team" in both modes, and a help line that called the shapes
-	// "friends". A name-reader check is structurally blind to a typed-out
-	// phrase, so the phrases get their own list.
-	const CAST_PHRASES = [/meet the team/i, /\bfriends?\b/i]
-	// "Play with a friend" is the two-player mode. It is a person, not a shape.
-	const PHRASE_ALLOWED = [/play with a friend/i, /friendly/i]
-	const phraseLeaks: string[] = []
-	for (const file of files) {
-		readFileSync(file, 'utf8')
-			.split('\n')
-			.forEach((line, i) => {
-				const t = line.trim()
-				if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return
-				if (t.includes('characters')) return
-				// Only what is inside a quote can be spoken. Without this the check
-				// fires on `id === 'friend'`, which is a mode id in a switch.
-				const literals = line.match(/'[^']*'|"[^"]*"|`[^`]*`/g) ?? []
-				for (const lit of literals) {
-					if (lit.length < 12) continue // an id, not a sentence
-					if (!CAST_PHRASES.some((r) => r.test(lit))) continue
-					if (PHRASE_ALLOWED.some((r) => r.test(lit))) continue
-					phraseLeaks.push(`${file.replace(SRC, 'src')}:${i + 1}: ${lit}`)
-				}
-			})
-	}
-	check(
-		'no ungated cast phrase in a player-facing string',
-		phraseLeaks.length === 0,
-		phraseLeaks.join(' | '),
-	)
-	// ...and the check is worthless if the accessors moved, so prove it can see them.
-	const seen = readFileSync(join(SRC, 'game', 'lines.ts'), 'utf8')
-	check(
-		'the two allowed readers are still present (this check is not vacuous)',
-		[...ALLOWED].every((a) => seen.includes(a)),
-		'shapeName/shapeBlurb no longer match the allowlist',
-	)
-}
-
-// Two cast elements that are NOT strings, so neither grep above can see them.
-// The tap is a sound effect and a tap-bounce animation; it fired with the cast
-// layer off, and it was found by reading the code rather than by any check.
-const castNonTextChecks = () => {
-	// Source-level, like the cast greps, because the behavioural route needs a
-	// pancake to hole out and a check that only asserts "no tap yet" is true for
-	// the wrong reason. Both non-text cast elements must sit behind the setting.
-	const flowSrc = readFileSync(join(SRC, 'game', 'flow.ts'), 'utf8')
-	const tapLine = flowSrc.split('\n').find((l) => l.includes("sfx.play('tap')")) ?? ''
-	check(
-		"Penny's tap sound is behind the cast setting",
-		tapLine.includes('settings.characters'),
-		tapLine.trim() || '(no tap call found)',
-	)
-	const drawSrc = readFileSync(join(SRC, 'render', 'draw.ts'), 'utf8')
-	const hopLine = drawSrc.split('\n').find((l) => l.includes("s.shape === 'pancake'")) ?? ''
-	check(
-		"Penny's tap-bounce is behind the cast setting",
-		hopLine.includes('charactersNow()'),
-		hopLine.trim() || '(no tap-bounce found)',
-	)
-	// ...and the grep is worthless if the call moved, so prove both were found.
-	check(
-		'both non-text cast elements were located in the source',
-		tapLine !== '' && hopLine !== '',
-		`tap=${tapLine !== ''} hop=${hopLine !== ''}`,
-	)
-	// The narrator's hole-out line for Penny must not translate the tap. It used
-	// to say "That means yes." — a hearing player being told what a nonspeaking
-	// character's single output means.
-	const holedOut: StrikeOutcome = {
-		points: [],
-		events: [],
-		end: { x: 100, lie: 'green' },
-		holed: true,
-		water: false,
-		carry: 100,
-		total: 100,
-	}
-	const anyHole = COURSES[0]?.holes[0] as HoleSpec
-	const line = L.narrate(holedOut, 'pancake', anyHole, true)
-	check(
-		"the hole-out line does not gloss Penny's tap",
-		!/means/i.test(line) && line.includes('taps once'),
-		line,
-	)
-}
-
-// ---------- 5b. the cast layer is all-or-nothing ----------
-
-// Settings.characters is off by default, so the DEFAULT experience is the one
-// least exercised by hand. A half-applied toggle — plain blurb under a
-// character name, or "In the cup! Brick is very pleased." for a player who
-// never opted into Brick — reads as a bug rather than a style.
-const castLayerChecks = () => {
-	// The Help page shipped as a module-level const, evaluated once at import
-	// with no way to consult the setting, so it read out the whole cast —
-	// including "Brick is deaf" and "Glide does not walk" — to a player who had
-	// the layer off. It is the one screen where the disability framing is
-	// delivered in full, which makes it the worst place for it to leak.
-	const helpOff = L.helpPages(false)
-	const helpOn = L.helpPages(true)
-	const teamOff = helpOff.find((p) => /shapes|team/i.test(p.label))
-	const teamOn = helpOn.find((p) => /shapes|team/i.test(p.label))
-	// '' rather than a guard on every line: a missing page then fails every
-	// assertion below instead of silently skipping them.
-	const speakOff = teamOff?.speak ?? ''
-	const speakOn = teamOn?.speak ?? ''
-	check('the Help page has a shapes page in both modes', speakOff !== '' && speakOn !== '', '')
-	for (const id of SHAPE_ORDER) {
-		check(
-			`${id}: the Help shapes page follows the cast setting`,
-			speakOff.includes(SHAPES[id].plainBlurb) && !speakOff.includes(SHAPES[id].blurb),
-			speakOff,
-		)
-	}
-	check(
-		'no character pronoun anywhere in the plain Help page',
-		speakOff !== '' && !/\b(she|he|her|him|his|hers)\b/i.test(speakOff),
-		speakOff,
-	)
-	check(
-		'the Help page names the cast when the cast is on',
-		SHAPE_ORDER.every((id) => speakOn.includes(SHAPES[id].name)),
-		speakOn,
-	)
-
-	// The cast is written with gendered pronouns and disability-coded detail
-	// (CAST.md); plain mode is written entirely in "it". That makes a pronoun
-	// the cheapest reliable tell that a character line leaked into plain mode.
-	const PRONOUN = /\b(she|he|her|him|his|hers)\b/i
-	for (const id of SHAPE_ORDER) {
-		const off = L.shapeFocus(id, 150, false)
-		const on = L.shapeFocus(id, 150, true)
-		check(
-			`${id}: plain focus uses the plain name and the plain blurb`,
-			off.includes(SHAPES[id].plainName) && off.includes(SHAPES[id].plainBlurb),
-			off,
-		)
-		check(`${id}: plain focus carries no character pronoun`, !PRONOUN.test(off), off)
-		// The NAME must be in the opening clause, not merely somewhere in the
-		// line: `on.includes(name)` was satisfied by the blurb, so this passed for
-		// five of six shapes with shapeName() hard-wired to the plain name.
-		check(
-			`${id}: character focus uses the character name and blurb`,
-			on.startsWith(`${SHAPES[id].name}.`) && on.includes(SHAPES[id].blurb),
-			on,
-		)
-		check(`${id}: the two modes differ`, off !== on, `${off} // ${on}`)
-		check(
-			`${id}: the swing confirmation follows the same mode`,
-			L.shapeConfirm(id, false).includes(SHAPES[id].plainName) &&
-				L.shapeConfirm(id, true).includes(SHAPES[id].name),
-			`${L.shapeConfirm(id, false)} // ${L.shapeConfirm(id, true)}`,
-		)
-
-		// The hole-out line is the one place a character speaks unprompted, and
-		// it fires at the emotional peak of a hole — the leak a player would
-		// most notice, and the one a settings-screen check cannot see.
-		const holedOut: StrikeOutcome = {
-			points: [],
-			events: [],
-			end: { x: 100, lie: 'green' },
-			holed: true,
-			water: false,
-			carry: 100,
-			total: 100,
-		}
-		const anyHole = COURSES[0]?.holes[0] as HoleSpec
-		// The practice range shipped ungated: a player picking a row labelled
-		// "Cube" heard "Brick went 82 yards!". It is also the mode this game's
-		// own flow.ts calls "most likely to be someone's FIRST screen".
-		const rangeOff = L.rangeNarrate(holedOut, id, false)
-		const rangeOn = L.rangeNarrate(holedOut, id, true)
-		check(
-			`${id}: the practice range follows the cast setting`,
-			rangeOff.includes(SHAPES[id].plainName) && !PRONOUN.test(rangeOff),
-			rangeOff,
-		)
-		check(
-			`${id}: the practice range uses the character name when the cast is on`,
-			rangeOn.includes(SHAPES[id].name),
-			rangeOn,
-		)
-
-		const cupOff = L.narrate(holedOut, id, anyHole, false)
-		const cupOn = L.narrate(holedOut, id, anyHole, true)
-		check(`${id}: plain hole-out says only that it went in`, cupOff === 'In the cup!', cupOff)
-		check(
-			`${id}: character hole-out adds the character's line`,
-			cupOn.length > cupOff.length,
-			cupOn,
-		)
-	}
-}
+// (character layer removed: shapes have neutral names and blurbs only.)
 
 const main = async () => {
 	await latchChecks()
@@ -1584,10 +1255,6 @@ const main = async () => {
 	forwardPromiseChecks()
 	markdownChecks()
 	checklistTallyChecks()
-	castDocQuoteChecks()
-	castSourceChecks()
-	castLayerChecks()
-	castNonTextChecks()
 	focusOrderChecks()
 	await confirmShapeChecks()
 	await settingsInFlightChecks()
@@ -1598,16 +1265,12 @@ const main = async () => {
 	}
 	console.log(`${results.length - failures}/${results.length} checks passed`)
 
-	// A check that VANISHES is worse than one that always passes. `CAST.md's
-	// quote of pancake's cup line matches the code` only ran when the quoted
-	// string shared a long enough prefix with the shipped line — so growing the
-	// shipped line dropped the assertion entirely, the suite went 191/191 to
-	// 190/190, and the regression it guards shipped green. A reviewer found it
-	// by putting a narrator gloss back into Penny's line and watching the check
-	// disappear rather than fail.
+	// A check that VANISHES is worse than one that always passes. A removed
+	// check that is still expected takes the suite down with it, so the count
+	// below is pinned deliberately.
 	// Pinning the count is the general fix: any assertion that stops running
 	// takes the suite down with it. Raise this deliberately when adding checks.
-	const EXPECTED_CHECKS = 237
+	const EXPECTED_CHECKS = 137
 	if (results.length !== EXPECTED_CHECKS) {
 		console.log(
 			`menu-check: expected ${EXPECTED_CHECKS} checks, ran ${results.length}. A check that stops running is a check that stopped guarding something; find out which before changing this number.`,

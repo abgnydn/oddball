@@ -27,11 +27,8 @@ export const WIND_ACCEL = 0.35 // m/s^2 of horizontal accel per (m/s wind × win
 export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	sphere: {
 		id: 'sphere',
-		name: 'Dot',
-		plainName: 'Ball',
-		plainBlurb: 'It rolls true, and it rolls a long way.',
-		blurb:
-			'Dot hears everything. She listens for the beeper at the cup, and rolls right to it. She does not need to see it.',
+		name: 'Ball',
+		blurb: 'It rolls true, and it rolls a long way.',
 		maxCarry: 155,
 		launchDeg: 14,
 		drag: 0.008,
@@ -41,14 +38,13 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 		restitution: 0.38,
 		bounceJitter: 0.02,
 		rollMult: 1,
+		// Close-range rollout assist: helps the ball near the cup, bounded.
 		homing: { radius: 15, pull: 5 },
 	},
 	cube: {
 		id: 'cube',
-		name: 'Brick',
-		plainName: 'Cube',
-		plainBlurb: 'It lands and it stays. Wind moves it less than any other shape.',
-		blurb: 'Brick lands, and he stays. Wind moves him less than any other shape. Brick is deaf.',
+		name: 'Cube',
+		blurb: 'It lands and it stays. Wind moves it less than any other shape.',
 		maxCarry: 85,
 		launchDeg: 24,
 		drag: 0.02,
@@ -61,11 +57,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	},
 	disc: {
 		id: 'disc',
-		name: 'Glide',
-		plainName: 'Disc',
-		plainBlurb: 'It flies farther than anything else. The wind pushes it around the most.',
-		blurb:
-			'Glide flies, and nobody flies farther. The wind pushes them around the most. Glide does not walk.',
+		name: 'Disc',
+		blurb: 'It flies farther than anything else. The wind pushes it around the most.',
 		maxCarry: 235,
 		launchDeg: 11,
 		drag: 0.006,
@@ -79,9 +72,7 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	egg: {
 		id: 'egg',
 		name: 'Egg',
-		plainName: 'Egg',
-		plainBlurb: 'Nobody knows where it will go.',
-		blurb: 'The egg. Who knows where it will go? Not even the egg.',
+		blurb: 'Nobody knows where it will go.',
 		maxCarry: 190,
 		launchDeg: 16,
 		drag: 0.009,
@@ -94,10 +85,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	},
 	star: {
 		id: 'star',
-		name: 'Boing',
-		plainName: 'Star',
-		plainBlurb: 'It bounces, and it keeps bouncing.',
-		blurb: "Boing just loves to bounce. Boing! Where will he land? Even he doesn't know.",
+		name: 'Star',
+		blurb: 'It bounces, and it keeps bouncing.',
 		maxCarry: 140,
 		launchDeg: 20,
 		drag: 0.012,
@@ -110,10 +99,8 @@ export const SHAPES: Record<ShapeId, ShapeSpec> = {
 	},
 	pancake: {
 		id: 'pancake',
-		name: 'Penny',
-		plainName: 'Pancake',
-		plainBlurb: 'It flies high, lands soft, and stays right there.',
-		blurb: 'Penny flies high, lands soft, and stays right there. She taps once for yes.',
+		name: 'Pancake',
+		blurb: 'It flies high, lands soft, and stays right there.',
 		maxCarry: 130,
 		launchDeg: 38,
 		drag: 0.015,
@@ -147,8 +134,8 @@ export const CAL = {
 	eggSigmaFactor: 2.5, // egg total σ ≥ factor × every other shape's σ
 	discWindSwingFactor: 3, // |disc Δtotal at ±6 m/s wind| ≥ factor × sphere's
 	starBounceSpread: 25, // m, star total range (p90−p10) minimum
-	// Dot's homing (CAST.md): from a full approach, mean finish-distance improves
-	// by 1–6 m vs homing-disabled, and single-stroke hole-out rate stays < 0.6.
+	// Ball close-range rollout assist: from a full approach, mean finish-distance
+	// improves by 1–6 m vs assist-disabled, and single-stroke hole-out rate stays < 0.6.
 	homingGainM: [1, 6] as [number, number],
 	homingHoledMax: 0.6,
 	// Gamble shapes (egg, star) are never in a best line by design ("fun over
@@ -495,7 +482,6 @@ export const DEFAULT_SETTINGS: Settings = {
 	flightTone: true,
 	dwell: 'off',
 	autoScan: false,
-	characters: false,
 }
 
 export const DWELL_MS = { slow: 2000, fast: 1200 } as const

@@ -110,7 +110,7 @@ const SCALES = [100, 125, 150, 175, 200]
 // title:    fewest rows, shortest labels — the easy case.
 // settings: the most rows, so the first to overflow vertically.
 // range:    the shape rack, whose labels are the longest single words in the
-//           game ("Pancake") and change with the characters setting. It also
+//           game ("Pancake"). It also
 //           carries the canvas, which competes with the rows for height.
 // overlay: the PAUSE MENU. Added after two reviews found the highlight ring
 //          being cut there while this harness reported ALL PASS — it measured
@@ -226,13 +226,7 @@ const serve = (): Promise<{ url: string; close: () => void }> =>
 		})
 	})
 
-const SETTINGS = (
-	scale: number,
-	highlightThick = 'medium',
-	characters = false,
-	reduceMotion = true,
-	round?: unknown,
-) =>
+const SETTINGS = (scale: number, highlightThick = 'medium', reduceMotion = true, round?: unknown) =>
 	JSON.stringify({
 		...(round === undefined ? {} : { round }),
 		customHoles: SEEDED_HOLES,
@@ -249,18 +243,15 @@ const SETTINGS = (
 			flightTone: false,
 			dwell: 'off',
 			autoScan: false,
-			characters,
 		},
 	})
 
-// The main grid runs one combination of the two settings that change layout
-// without changing size — the ring is 4/8/12px by Highlight, and the labels
-// change with Character names. Sweeping both across the whole grid would triple the
-// runtime for cells that mostly repeat, so instead they get a focused pass over
-// the viewports where each is tightest: the shortest screens for the ring
-// (thick reaches 12px, the exact figure that just failed at 320x320), and the
-// mid-width band for the labels (the cast names are shorter than the plain
-// ones, but "Penny" was still spilling 87px there before the stack fix).
+// The main grid runs one combination of the settings that change layout
+// without changing size — the ring is 4/8/12px by Highlight. Sweeping it across
+// the whole grid would multiply the runtime for cells that mostly repeat, so
+// instead it gets a focused pass over the viewports where it is tightest: the
+// shortest screens for the ring
+// (thick reaches 12px, the exact figure that just failed at 320x320).
 // The stylesheet's tier boundaries, READ OUT OF THE BUILT CSS rather than typed
 // here. A hand-kept copy of this list goes stale the first time a media query
 // moves, and that is the same defect class the edge cells exist to catch — a
@@ -328,7 +319,6 @@ interface Pass {
 	viewports: Array<[number, number]>
 	scales: number[]
 	highlightThick: string
-	characters: boolean
 	/** The SHIPPED default is false. Every pass used to hard-code true, so the
 	 *  default motion state — which is what draws the focus pulse outside the
 	 *  row — was measured in none of the cells. */
@@ -340,7 +330,6 @@ const passesFor = (css: string): Pass[] => [
 		viewports: VIEWPORTS,
 		scales: SCALES,
 		highlightThick: 'medium',
-		characters: false,
 		reduceMotion: true,
 	},
 	{
@@ -357,7 +346,6 @@ const passesFor = (css: string): Pass[] => [
 		],
 		scales: [125, 200],
 		highlightThick: 'thick',
-		characters: false,
 		reduceMotion: true,
 	},
 	{
@@ -379,7 +367,6 @@ const passesFor = (css: string): Pass[] => [
 		// applied to the main grid and not to the pass written for boundaries.
 		scales: SCALES,
 		highlightThick: 'thick',
-		characters: false,
 		reduceMotion: true,
 	},
 	{
@@ -401,23 +388,7 @@ const passesFor = (css: string): Pass[] => [
 		],
 		scales: [125, 200],
 		highlightThick: 'thick',
-		characters: false,
 		reduceMotion: false,
-	},
-	{
-		label: 'cast names',
-		viewports: [
-			[575, 1024],
-			[768, 1024],
-			[875, 1024],
-			[320, 320],
-			[280, 480],
-			[912, 1368],
-		],
-		scales: [125, 200],
-		highlightThick: 'medium',
-		characters: true,
-		reduceMotion: true,
 	},
 ]
 
@@ -627,7 +598,6 @@ const main = async () => {
 							SETTINGS(
 								scale,
 								pass.highlightThick,
-								pass.characters,
 								pass.reduceMotion,
 								screen === 'rack' ? RACK_ROUND : undefined,
 							),

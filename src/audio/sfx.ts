@@ -5,7 +5,7 @@
 //
 // Beauty pass: everything runs quiet and warm through master → gentle high-shelf
 // → soft compressor (no clipping when several sounds overlap). Scanning is
-// musical (pentatonic marimba), bounces carry per-character signatures, and
+// musical (pentatonic marimba), bounces carry per-shape signatures, and
 // 'holed' stays the game's one beautiful sound.
 
 import { HOLD_BEEP_F0, HOLD_BEEP_STEP } from '../tuning'
@@ -213,7 +213,7 @@ export const createSFX = (): SFX => {
 		tone(a, out, { freq: freq * 2, dur: 0.09, gain: gain * 0.3, when, attack: 0.003 })
 	}
 
-	/** Per-character bounce signature. strength (0..1) scales gain and pitch. */
+	/** Per-shape bounce signature. strength (0..1) scales gain and pitch. */
 	const bounce = (a: AudioContext, out: GainNode, s: number, shape?: ShapeId): void => {
 		switch (shape) {
 			case 'cube': {
@@ -228,7 +228,7 @@ export const createSFX = (): SFX => {
 				break
 			}
 			case 'star': {
-				// Springy upward boing, a hair of random detune so no two hits match.
+				// Springy upward bounce, a hair of random detune so no two hits match.
 				const base = (150 + 180 * s) * cents(1, (Math.random() * 2 - 1) * 60)
 				tone(a, out, {
 					freq: base,
@@ -391,7 +391,7 @@ export const createSFX = (): SFX => {
 				})
 				break
 			case 'bounce': {
-				// Recorded per-character impacts; strength drives gain + a pitch nudge.
+				// Recorded per-shape impacts; strength drives gain + a pitch nudge.
 				const jitter = shape === 'star' ? 0.12 : 0.04
 				const rate = (0.92 + 0.2 * strength) * (1 + (Math.random() * 2 - 1) * jitter)
 				if (
@@ -442,7 +442,7 @@ export const createSFX = (): SFX => {
 				break
 			}
 			case 'tap':
-				// Penny's yes — one real woodblock tap.
+				// The pancake's signature — one real woodblock tap.
 				if (sample(a, out, 'tap', { gain: 0.6 })) break
 				tone(a, out, { freq: 690, freqEnd: 640, dur: 0.09, gain: 0.28, attack: 0.002 })
 				tone(a, out, { freq: 1380, dur: 0.03, gain: 0.07, attack: 0.001 })

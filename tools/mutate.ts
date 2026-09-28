@@ -27,8 +27,6 @@ const TT = 'src/speech/tts.ts'
 const LN = 'src/game/lines.ts'
 // The docs are shipped artifacts too — they go up in the same push, and three of
 // the defects this project has had to fix were sentences, not code.
-const FL2 = 'src/game/flow.ts'
-const CAST = 'CAST.md'
 const DESIGN = 'DESIGN.md'
 
 interface Mutation {
@@ -136,8 +134,8 @@ const MUTATIONS: Mutation[] = [
 		edits: [
 			[
 				LN,
-				'\t`${shapeName(id, characters)}. Goes about ${yd(reachM)} yards. ${shapeBlurb(id, characters)}`',
-				'\t`${shapeName(id, characters)}. ${shapeBlurb(id, characters)} Goes about ${yd(reachM)} yards.`',
+				'\t`${shapeName(id)}. Goes about ${yd(reachM)} yards. ${shapeBlurb(id)}`',
+				'\t`${shapeName(id)}. ${shapeBlurb(id)} Goes about ${yd(reachM)} yards.`',
 			],
 		],
 	},
@@ -169,158 +167,31 @@ const MUTATIONS: Mutation[] = [
 // By NAME, not by index: this was `MUTATIONS[3]` and `MUTATIONS[5]`, so
 // inserting a mutation above silently re-pointed the pair while it kept the
 // name of the one it used to be.
-MUTATIONS.push(
-	{
-		// The cast layer is opt-in, so the DEFAULT reading is the one nobody
-		// plays by hand. A half-applied toggle is the likely way it breaks.
-		name: 'lines: the cast blurb leaks into the plain reading',
-		harness: 'menu-check',
-		edits: [
-			[LN, '\tcharacters ? SHAPES[id].blurb : SHAPES[id].plainBlurb\n', '\tSHAPES[id].blurb\n'],
+MUTATIONS.push({
+	name: 'lines: the course best score goes back after the flavour',
+	harness: 'menu-check',
+	edits: [
+		[
+			LN,
+			"\t`${name}.${best !== undefined ? ` Your best here: ${best} shots.` : ''} ${blurb}`",
+			"\t`${name}. ${blurb}${best !== undefined ? ` Your best here: ${best} shots.` : ''}`",
 		],
-	},
-	{
-		name: 'lines: the hole-out line ignores the cast setting',
-		harness: 'menu-check',
-		edits: [
-			[
-				LN,
-				"\tif (out.holed) return characters ? `In the cup! ${HOLED_FLAVOR[id]}` : 'In the cup!'",
-				'\tif (out.holed) return `In the cup! ${HOLED_FLAVOR[id]}`',
-			],
-		],
-	},
-	{
-		name: 'lines: the course best score goes back after the flavour',
-		harness: 'menu-check',
-		edits: [
-			[
-				LN,
-				"\t`${name}.${best !== undefined ? ` Your best here: ${best} shots.` : ''} ${blurb}`",
-				"\t`${name}. ${blurb}${best !== undefined ? ` Your best here: ${best} shots.` : ''}`",
-			],
-		],
-	},
-)
+	],
+})
 
-MUTATIONS.push(
-	{
-		// Shipped. The range is the mode flow.ts itself calls "most likely to be
-		// someone's FIRST screen", and it spoke the character name to a player
-		// who had the cast turned off.
-		name: 'lines: the practice range ignores the cast setting',
-		harness: 'menu-check',
-		edits: [
-			[
-				LN,
-				'rangeNarrate = (out: StrikeOutcome, id: ShapeId, characters: boolean): string => {\n\tconst name = shapeName(id, characters)',
-				'rangeNarrate = (out: StrikeOutcome, id: ShapeId, characters: boolean): string => {\n\tconst name = SHAPES[id].name',
-			],
+MUTATIONS.push({
+	// The §10 tally, stated in prose beside the table it summarises. It has
+	// been wrong twice, once contradicting a paragraph 25 lines below it.
+	name: 'DESIGN.md: the §10 tally stops matching its table',
+	harness: 'menu-check',
+	edits: [
+		[
+			DESIGN,
+			'**12 met, 3 met by a different route, 3 not met**',
+			'**13 met, 3 met by a different route, 2 not met**',
 		],
-	},
-	{
-		// Shipped. A module-level const evaluated at import, so it could not
-		// consult the setting even in principle — it read out "Brick is deaf"
-		// to a player who had the layer off.
-		name: 'lines: the Help shapes page ignores the cast setting',
-		harness: 'menu-check',
-		edits: [
-			[
-				LN,
-				'\t\t\t(id) => `${shapeName(id, characters)}. ${shapeBlurb(id, characters)}`,',
-				'\t\t\t(id) => `${SHAPES[id].name}. ${SHAPES[id].blurb}`,',
-			],
-		],
-	},
-)
-
-MUTATIONS.push(
-	{
-		// Shipped, and found by all five verification lenses at once. The page
-		// this row opens is gated; the row that describes it was not, so the
-		// main menu said "meet the team" to a player who had the cast off.
-		name: 'lines: the title row says "meet the team" in both modes',
-		harness: 'menu-check',
-		edits: [
-			[
-				LN,
-				"\thelpSpeak: 'How to Play. Learn the game and the shapes.',",
-				"\thelpSpeak: 'How to Play. Learn the game and meet the team.',",
-			],
-		],
-	},
-	{
-		// Same class: a persona word typed into a line, invisible to a check
-		// that looks for readers of the cast strings.
-		name: 'lines: the help body calls the shapes friends',
-		harness: 'menu-check',
-		edits: [
-			[
-				LN,
-				'Pick the right shape for the right moment.',
-				'Pick the right friend for the right moment.',
-			],
-		],
-	},
-)
-
-MUTATIONS.push(
-	{
-		// A quoted blurb drifting from the code it quotes. Every round so far a
-		// reviewer has had to diff these by hand.
-		name: 'CAST.md: a reprinted blurb drifts from tuning.ts',
-		harness: 'menu-check',
-		// Anchored on the LIST entry, not the bare sentence: the narrator-rules
-		// bullet quotes the same blurb, and String.replace takes the first hit.
-		// The preflight caught this the moment the second copy appeared.
-		edits: [[CAST, '- Brick: "Brick lands, and he stays.', '- Brick: "Brick lands and stays.']],
-	},
-	{
-		// The §10 tally, stated in prose beside the table it summarises. It has
-		// been wrong twice, once contradicting a paragraph 25 lines below it.
-		name: 'DESIGN.md: the §10 tally stops matching its table',
-		harness: 'menu-check',
-		edits: [
-			[
-				DESIGN,
-				'**12 met, 3 met by a different route, 3 not met**',
-				'**13 met, 3 met by a different route, 2 not met**',
-			],
-		],
-	},
-	{
-		// A paragraph wedged between two table rows. This shipped: a blank line
-		// ends a GFM table, so half the cast rendered as literal pipe text.
-		name: 'CAST.md: a paragraph splits a table',
-		harness: 'menu-check',
-		edits: [
-			[CAST, '| Disc | **Glide**', '\nA paragraph wedged between two rows.\n\n| Disc | **Glide**'],
-		],
-	},
-)
-
-MUTATIONS.push(
-	{
-		// The fifth cast leak. A sound, so neither grep sees it — this mutation
-		// is the only thing standing between it and a silent return.
-		name: "flow: Penny's tap sound ignores the cast setting",
-		harness: 'menu-check',
-		edits: [
-			[
-				FL2,
-				"if (id === 'pancake' && settings.characters) sfx.play('tap')",
-				"if (id === 'pancake') sfx.play('tap')",
-			],
-		],
-	},
-	{
-		// The narrator interpreting a nonspeaking character's one output for the
-		// hearing player. Cut for the same reason the blurb clause was cut.
-		name: 'lines: the narrator explains what a tap means',
-		harness: 'menu-check',
-		edits: [[LN, "pancake: 'Penny taps once.',", "pancake: 'Penny taps once. That means yes.',"]],
-	},
-)
+	],
+})
 
 const byName = (name: string): Mutation['edits'] => {
 	const m = MUTATIONS.find((x) => x.name === name)

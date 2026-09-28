@@ -124,7 +124,7 @@ check(
 	`wind owns the disc (${discW.toFixed(0)} ≥ ${CAL.discWindSwingFactor} × ${sphereW.toFixed(0)})`,
 )
 
-console.log('\n— Dot’s homing (approach from 150 m, green 140–160, cup 150) —')
+console.log('\n— ball rollout assist (approach from 150 m, green 140–160, cup 150) —')
 const homingHole: HoleSpec = {
 	name: 'homing-ref',
 	intro: '',
@@ -140,9 +140,9 @@ const homingHole: HoleSpec = {
 	cupX: 150,
 	intendedShapes: [],
 }
-const dotOn = SHAPES.sphere
-const { homing: _drop, ...rest } = dotOn
-const dotOff: ShapeSpec = rest
+const ballOn = SHAPES.sphere
+const { homing: _drop, ...rest } = ballOn
+const ballOff: ShapeSpec = rest
 function homingRun(shape: ShapeSpec, seedBase: number) {
 	let distSum = 0
 	let holed = 0
@@ -153,19 +153,19 @@ function homingRun(shape: ShapeSpec, seedBase: number) {
 	}
 	return { meanDist: distSum / CAL.seeds, holedRate: holed / CAL.seeds }
 }
-const on = homingRun(dotOn, 5000)
-const off = homingRun(dotOff, 5000)
+const on = homingRun(ballOn, 5000)
+const off = homingRun(ballOff, 5000)
 const gain = off.meanDist - on.meanDist
 console.log(
-	`  homing on: ${on.meanDist.toFixed(1)} m to cup, holed ${(on.holedRate * 100).toFixed(0)}%  |  off: ${off.meanDist.toFixed(1)} m, holed ${(off.holedRate * 100).toFixed(0)}%`,
+	`  assist on: ${on.meanDist.toFixed(1)} m to cup, holed ${(on.holedRate * 100).toFixed(0)}%  |  off: ${off.meanDist.toFixed(1)} m, holed ${(off.holedRate * 100).toFixed(0)}%`,
 )
 check(
 	gain >= CAL.homingGainM[0] && gain <= CAL.homingGainM[1],
-	`homing helps but is bounded (gain ${gain.toFixed(1)} m in [${CAL.homingGainM[0]}, ${CAL.homingGainM[1]}])`,
+	`rollout assist helps but is bounded (gain ${gain.toFixed(1)} m in [${CAL.homingGainM[0]}, ${CAL.homingGainM[1]}])`,
 )
 check(
 	on.holedRate < CAL.homingHoledMax,
-	`homing is not an aimbot (holed ${(on.holedRate * 100).toFixed(0)}% < ${CAL.homingHoledMax * 100}%)`,
+	`assist is not an aimbot (holed ${(on.holedRate * 100).toFixed(0)}% < ${CAL.homingHoledMax * 100}%)`,
 )
 check(GIMME_M <= 2, `gimme stays honest (${GIMME_M} ≤ 2)`)
 

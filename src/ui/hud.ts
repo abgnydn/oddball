@@ -13,7 +13,7 @@ export interface HudItemSpec {
 	speak: string
 	/** See ScanItem.hold — warnings only. */
 	hold?: boolean
-	glyph?: ShapeId // character portrait drawn beside the label (rack rows)
+	glyph?: ShapeId // shape portrait drawn beside the label (rack rows)
 	/** Visible sub-line under the label (shape blurb). */
 	detail?: string
 }
@@ -213,11 +213,6 @@ export function createHud(root: HTMLElement): Hud {
 			html.dataset.hl = s.highlightThick
 			if (s.reduceMotion) html.dataset.reduceMotion = 'true'
 			else delete html.dataset.reduceMotion
-			// The renderer reads the cast setting the same way it reads
-			// reduce-motion: Penny's tap-bounce is a character's cheer, not a
-			// physics event, and it was firing with the cast layer off.
-			if (s.characters) html.dataset.characters = 'true'
-			else delete html.dataset.characters
 			html.style.setProperty('--font-scale', String((s.fontScale as FontScale) / 100))
 			// Mirrored as an attribute so CSS can react to large print: the layout
 			// only has to drop the footer legend when the text is big AND the

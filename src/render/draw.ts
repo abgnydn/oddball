@@ -55,20 +55,12 @@ const BEEP_NEAR_M = 20 // rolling ball within this of the cup → beeper ring
 const AFTER_BEAT_S = 0.5 // holed: beat of stillness before the pulse
 const AFTER_PULSE_S = 0.7 // holed: pulse ring expansion time
 export const AFTER_TOTAL_S = 1.5 // holed: total afterglow before onDone
-const PENNY_TAP_AT = 0.06 // Penny's single tap-bounce, inside the still beat
-const PENNY_TAP_S = 0.34
+const PANCAKE_TAP_AT = 0.06 // pancake's tap-bounce on hole-out, inside the still beat
+const PANCAKE_TAP_S = 0.34
 
 /** Read at draw time so a mid-session settings change takes effect immediately. */
 const reduceMotionNow = (): boolean =>
 	typeof document !== 'undefined' && document.documentElement.dataset.reduceMotion === 'true'
-
-/** The cast layer (Settings -> Character names), read off <html> the same way
- *  reduce-motion is. Penny's tap-bounce is hers, so with the cast off it does
- *  not happen. This was the fifth ungated cast element found, and the first
- *  that neither of menu-check's greps could see: it is an animation, not a
- *  string. */
-const charactersNow = (): boolean =>
-	typeof document !== 'undefined' && document.documentElement.dataset.characters === 'true'
 
 // ---------- colors from CSS custom properties ----------
 
@@ -315,8 +307,8 @@ interface FaceGeom {
 	ms: number // mouth scale
 }
 
-// Placed so each character's silhouette stays unmistakable (disc face is
-// compressed into the lens; Penny's face sits on her top pancake).
+// Placed so each shape's silhouette stays unmistakable (disc face is
+// compressed into the lens; the pancake's face sits on its top layer).
 const FACE: Record<ShapeId, FaceGeom> = {
 	sphere: { ex: 0.38, ey: -0.22, er: 0.19, my: 0.38, ms: 1 },
 	cube: { ex: 0.42, ey: -0.28, er: 0.2, my: 0.42, ms: 1 },
@@ -373,7 +365,7 @@ const drawFace = (
 
 // ---------- glyphs ----------
 
-/** Draw the ball as its character, centered on the current origin (pre-translated). */
+/** Draw the ball as its shape, centered on the current origin (pre-translated). */
 const drawShape = (
 	c: CanvasRenderingContext2D,
 	shape: ShapeId | null,
@@ -465,7 +457,7 @@ const spin = (shape: ShapeId, simT: number, phase: FlightPhase): number => {
 }
 
 /**
- * Render one character (with face, idle expression) onto a small square
+ * Render one shape (with face, idle expression) onto a small square
  * canvas the caller sizes via CSS. Handles devicePixelRatio; reads colors
  * from the CSS tokens like the renderer does. The HUD calls this for the
  * shape-rack rows.
@@ -1053,9 +1045,9 @@ export const createRenderer = (): Renderer => {
 		const holedNow = s.holedT !== null && simT >= s.holedT
 		const after = Math.max(0, s.elapsed - PRE_S - s.duration)
 		let hop = 0
-		if (after > 0 && s.outcome.holed && s.shape === 'pancake' && charactersNow()) {
-			// Penny's single tap-bounce: her cheer, inside the still beat
-			const u = (after - PENNY_TAP_AT) / PENNY_TAP_S
+		if (after > 0 && s.outcome.holed && s.shape === 'pancake') {
+			// The pancake's tap-bounce: its cheer, inside the still beat
+			const u = (after - PANCAKE_TAP_AT) / PANCAKE_TAP_S
 			if (u >= 0 && u <= 1) hop = Math.sin(Math.PI * u) * 9
 		}
 		const face: FaceExpr = holedNow

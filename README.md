@@ -58,9 +58,6 @@ in progress. On iOS the first spoken line can be silent until you tap once.
 - A practice range.
 - A **Make a Hole** editor: pick length, ground, water, sand and wind; par is
   measured by simulating your hole, and you can save ten.
-- An optional character layer, **off by default** (Settings → Character
-  names): each shape becomes a character — see [CAST.md](CAST.md) for who they
-  are and for the open question about that layer.
 - Everything is spoken and captioned. A tone rises with the ball's height, and
   the cup beeper speeds up as a rolling ball gets close.
 - Text scales to 200%. On small screens the caption bar, footer legend and row
@@ -75,8 +72,6 @@ in progress. On iOS the first spoken line can be silent until you tap once.
 - **Nobody has played this start to finish with one switch.** The hub's own
   checklist calls that the only test that counts. The one-switch path is
   covered by automated harnesses and by hand, which is not the same thing.
-- The character layer has not been reviewed by the switch-access community it
-  is written for. It ships off by default; the review decides whether it stays.
 - [DESIGN.md](DESIGN.md) walks their §10 shipping checklist item by item and
   says exactly what is met, what is met by a different route, and what is not.
 
@@ -94,7 +89,7 @@ pnpm calibrate      # shape-identity harness
 pnpm holes          # course playability / no-dominance harness
 pnpm editor-check   # every editor combo stays playable; samples 62 of 540
 pnpm input-check    # switch/scan grammar self-test
-pnpm menu-check     # menus, confirms, Auto Scan, cast gating — the real flow
+pnpm menu-check     # menus, confirms, Auto Scan — the real flow
 pnpm layout-check   # drives the BUILT game in a browser across every text
                     # scale and viewport tier; run `pnpm build` first
 pnpm mutate         # breaks the code one edit at a time; each must go red
