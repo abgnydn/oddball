@@ -700,6 +700,7 @@ export function createFlow(deps: Deps): Flow {
 				label: L.shapeName(id, settings.characters),
 				speak: L.shapeFocus(id, reach(id), settings.characters),
 				glyph: id,
+				detail: L.shapeBlurb(id, settings.characters),
 			})),
 			// The range is gameplay, so §12's scannable pause applies here too.
 			// It was in the round rack only, which made the "no screen needs a
@@ -831,6 +832,7 @@ export function createFlow(deps: Deps): Flow {
 				label: L.shapeName(id, settings.characters),
 				speak: L.shapeFocus(id, reach(id), settings.characters),
 				glyph: id,
+				detail: L.shapeBlurb(id, settings.characters),
 			})),
 			// A scannable route to the menu. Holding Enter also opens it, but a
 			// player who cannot sustain a 3 s hold would otherwise have no way to

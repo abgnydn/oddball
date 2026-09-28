@@ -775,6 +775,30 @@ body {
 	flex: none;
 }
 
+/* Shape rows show how each shape acts differently: a wrapped blurb sub-line
+   under the label. It lives in a .scan-text column beside the glyph, so the
+   glyph layout is untouched. The sub-line is smaller and dimmed via the --text
+   token (no new colors). Widths are capped at 100% with min-width:0 up the
+   chain, so nothing pushes past the row at 200% text or in narrow viewports —
+   extra lines grow the row vertically and scroll in-panel. */
+.scan-text {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.scan-detail {
+	font-size: 0.72em;
+	font-weight: 400;
+	color: color-mix(in srgb, var(--text) 78%, transparent);
+	white-space: normal;
+	overflow-wrap: anywhere;
+	min-width: 0;
+	line-height: 1.3;
+}
+
 /* A row taller than the panel's visible area cannot be read at ANY scroll
    position, so these caps are correctness, not polish. Two conditions produce
    it, and each needs its own query: a SHORT viewport (the panel gets little
@@ -940,6 +964,196 @@ body {
 	.scan-glyph {
 		width: min(2rem, 28px);
 		height: min(2rem, 28px);
+	}
+}
+
+/* The scan panel can shrink inside .main so there is room to scroll: as a
+   flex item its automatic minimum is the content height, which stops the
+   shrink that makes room for the scroll. An explicit min-height:0 matches
+   what overflow-y:auto already implies for itself, so this only documents the
+   requirement. The list itself keeps its automatic minimum (no min-height:0
+   here on purpose): capping it lets flex-shrink squeeze rows down to their
+   min-height floor with the blurb spilling outside the row, which measures as
+   unclipped while painting over the next row. The panel is the scroll
+   container; the scanner already scrolls the focused row into view on focus
+   change. */
+.scan-panel {
+	min-height: 0;
+}
+
+/* Shape-row detail compaction at large print. The blurb sub-line is what made
+   rack/range rows taller than the panel once they shipped: at 200% a six-line blurb is 242px before padding, so no scroll
+   position fits the row, let alone its ring (row + 2 * reach must fit). The
+   label keeps its size — it is what the player is choosing — while the detail
+   (flavour; the yardage decision is spoken first and the caption still prints
+   large) gives up room first, per the README order. Keyed on the existing
+   data-font hook. 125% is included: 412x481 @125% lost 8px of ring on the
+   longest blurb with no font-keyed rule to help it. Row inline padding is
+   capped to the short tier's 8px here — equal to that tier, tighter than the
+   narrow tier's 14px and the base 24-38px, so this never makes a small screen
+   taller. */
+:root[data-font='125'] .scan-text {
+	gap: 0.18rem;
+}
+:root[data-font='150'] .scan-text {
+	gap: 0.15rem;
+}
+:root[data-font='175'] .scan-text {
+	gap: 0.15rem;
+}
+:root[data-font='200'] .scan-text {
+	gap: 0.12rem;
+}
+:root[data-font='125'] .scan-detail {
+	font-size: 0.6em;
+	line-height: 1.2;
+}
+:root[data-font='150'] .scan-detail {
+	font-size: 0.6em;
+	line-height: 1.2;
+}
+:root[data-font='175'] .scan-detail {
+	font-size: 0.55em;
+	line-height: 1.2;
+}
+:root[data-font='200'] .scan-detail {
+	font-size: 0.5em;
+	line-height: 1.2;
+}
+:root[data-font='125'] .scan-list,
+:root[data-font='150'] .scan-list,
+:root[data-font='175'] .scan-list,
+:root[data-font='200'] .scan-list {
+	gap: 0.5rem;
+	padding: 0.75rem;
+}
+:root[data-font='125'] .scan-panel,
+:root[data-font='150'] .scan-panel,
+:root[data-font='175'] .scan-panel,
+:root[data-font='200'] .scan-panel {
+	padding: min(0.5rem, 8px);
+}
+:root[data-font='125'] .scan-item,
+:root[data-font='150'] .scan-item,
+:root[data-font='175'] .scan-item,
+:root[data-font='200'] .scan-item {
+	padding: min(0.5rem, 8px) min(1.2rem, 18px);
+}
+
+/* The same compaction for short/narrow tiers at every text size. The
+   font-keyed rules above do not cover 100-125%, yet a two-line blurb at the
+   22px cap is still 62px of a 161px panel (412x481 @125% lost 8px of ring
+   there). Bare specificity here, after the row caps above, so these ride along
+   wherever those tiers already apply. */
+@media (max-height: 700px) {
+	.scan-text {
+		gap: 0.2rem;
+	}
+	.scan-detail {
+		font-size: 0.65em;
+		line-height: 1.25;
+	}
+	.scan-list {
+		gap: 0.5rem;
+		padding: 0.75rem;
+	}
+}
+
+@media (max-width: 560px) {
+	.scan-text {
+		gap: 0.2rem;
+	}
+	.scan-detail {
+		font-size: 0.65em;
+		line-height: 1.25;
+	}
+	.scan-list {
+		gap: 0.5rem;
+		padding: 0.75rem;
+	}
+}
+
+@media (max-height: 480px) {
+	.scan-text {
+		gap: 0.15rem;
+	}
+	.scan-detail {
+		font-size: 0.6em;
+		line-height: 1.2;
+	}
+	.scan-list {
+		gap: 0.4rem;
+		padding: 0.5rem;
+	}
+}
+
+@media (max-width: 360px) {
+	.scan-text {
+		gap: 0.15rem;
+	}
+	.scan-detail {
+		font-size: 0.6em;
+		line-height: 1.2;
+	}
+	.scan-list {
+		gap: 0.4rem;
+		padding: 0.5rem;
+	}
+}
+
+/* Large print on a mid-width screen stacks (max-width:900px above) but kept
+   the base row size, so a 391px shape row faced a 311px panel at 575x1024
+   @200% with no scroll position that fits. Same cap the narrow tier already
+   uses, keyed on data-font so 100% keeps its side-by-side size; the detail
+   rules above already apply here, this brings the label, padding, glyph and
+   chrome into the same budget. The legend hides and the caption caps here for
+   the same reason: at 575x1024 @200% the footer was 205px and the caption
+   273px, leaving the panel 311px for rows that need 286px with their rings.
+   Caption yields first, then the legend, then row sizes — the README order.
+   Scoped to min-height:481px and min-width:561px so these never override the
+   smaller short/narrow tiers below to a LARGER value: at 600x300 the short
+   tier's 17px/44px/12dvh must win over this block's 22px/56px/24dvh, and
+   between equal-specificity font-keyed rules document order alone would not
+   save it. The panel flex and the legend hide stay broad (a taller panel and
+   a hidden legend only ever help the ring). */
+@media (max-width: 900px) {
+	:root[data-font='125'] .scan-panel,
+	:root[data-font='150'] .scan-panel,
+	:root[data-font='175'] .scan-panel,
+	:root[data-font='200'] .scan-panel {
+		flex: 1 1 auto;
+		min-height: 0;
+	}
+
+	:root[data-font='150'] .footer-legend,
+	:root[data-font='175'] .footer-legend,
+	:root[data-font='200'] .footer-legend {
+		display: none;
+	}
+}
+
+@media (max-width: 900px) and (min-height: 481px) and (min-width: 561px) {
+	:root[data-font='125'] .scan-item,
+	:root[data-font='150'] .scan-item,
+	:root[data-font='175'] .scan-item,
+	:root[data-font='200'] .scan-item {
+		font-size: min(1.15rem, 22px);
+		padding: min(0.5rem, 8px) min(1.2rem, 18px);
+		min-height: 56px;
+	}
+
+	:root[data-font='125'] .scan-glyph,
+	:root[data-font='150'] .scan-glyph,
+	:root[data-font='175'] .scan-glyph,
+	:root[data-font='200'] .scan-glyph {
+		width: min(2.75rem, 40px);
+		height: min(2.75rem, 40px);
+	}
+
+	:root[data-font='150'] .caption-bar,
+	:root[data-font='175'] .caption-bar,
+	:root[data-font='200'] .caption-bar {
+		max-height: min(24dvh, 18rem);
 	}
 }
 

@@ -14,6 +14,8 @@ export interface HudItemSpec {
 	/** See ScanItem.hold — warnings only. */
 	hold?: boolean
 	glyph?: ShapeId // character portrait drawn beside the label (rack rows)
+	/** Visible sub-line under the label (shape blurb). */
+	detail?: string
 }
 
 export interface Hud {
@@ -69,6 +71,16 @@ const buildList = (container: HTMLElement, items: HudItemSpec[], idPrefix = 'sca
 			requestAnimationFrame(() => drawShapeGlyph(glyph, shape))
 		}
 		row.appendChild(el('span', '', spec.label))
+		if (spec.detail !== undefined) {
+			const text = el('div', 'scan-text')
+			// Move the label into a wrapping column so the sub-line sits under
+			// it while the glyph stays beside both. Rows without a detail keep
+			// the old flat structure.
+			const label = row.querySelector('span')
+			if (label) text.appendChild(label)
+			text.appendChild(el('div', 'scan-detail', spec.detail))
+			row.appendChild(text)
+		}
 		list.appendChild(row)
 		return {
 			id: spec.id,
